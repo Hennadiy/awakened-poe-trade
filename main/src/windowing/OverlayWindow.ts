@@ -65,12 +65,7 @@ export class OverlayWindow {
       return
     }
 
-    if (process.env.VITE_DEV_SERVER_URL) {
-      this.window.loadURL(url)
-      this.window.webContents.openDevTools({ mode: 'detach', activate: false })
-    } else {
-      this.window.loadURL(url)
-    }
+    this.window.loadURL(url)
   }
 
   assertOverlayActive = () => {
