@@ -66,10 +66,12 @@ adds a few more, spaced 5s apart. The script stops on the first rate-limit reply
 Run it once per league, not in a loop. Responses are saved to `renderer/.trade-data`;
 add `--offline` to rerun from them without asking the site again.
 
-It appends bulk-exchange items (currency, fragments, cards) and base types of the
-item groups listed in `BASE_GROUPS` to `public/data/en/items.ndjson`, and adds the
-trade site's wording of reworded modifiers (e.g. "+#% to Item Rarity") to
-`public/data/en/stats.ndjson`, keeping the old wording. A brand new
+It appends bulk-exchange items (currency, fragments, cards), base types of the
+item groups listed in `BASE_GROUPS` and unique items (except unique maps) to
+`public/data/en/items.ndjson`. In `public/data/en/stats.ndjson` it adds the trade
+site's wording of reworded modifiers (e.g. "+#% to Item Rarity"), keeping the old
+wording, and adds modifiers the app has no stat for (new uniques, league mods).
+New uniques get no icon. A brand new
 item group (like Viscera) also needs an `ItemCategory` and a trade category mapping,
 see `src/parser/meta.ts` and `src/web/price-check/trade/pathofexile-trade.ts`.
 

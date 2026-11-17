@@ -17,12 +17,16 @@
 // 2. Base types of the trade item groups listed in BASE_GROUPS (/api/trade/data/items).
 //    Added as ITEM with craftable.category. With --icons, icons come from one trade
 //    search in --league, so only bases that currently have listings get one.
+// 2b. Unique items (/api/trade/data/items) whose base type is known, one entry per
+//    name + base. Added as UNIQUE without an icon. Unique maps are skipped.
 //
 // 3. Reworded modifiers (/api/trade/data/stats). When a league changes a modifier's
 //    wording (e.g. "#% increased Rarity of Items found" -> "+#% to Item Rarity"), the
 //    trade site's new text is added as one more matcher of the stat with that trade id.
-//    Old wordings stay, so items from before the change still parse. Brand new modifiers
-//    are not added.
+//    Old wordings stay, so items from before the change still parse.
+// 4. New modifiers: trade stats whose id no local stat has (new uniques, league mods)
+//    are added as new stats with the trade site's text. Texts that already exist or
+//    that several new stats share are skipped.
 //
 // Names and texts that already exist are skipped, so the script is safe to rerun.
 // Only English data is updated. Vite regenerates the *.index.bin files on change.
@@ -33,11 +37,18 @@ import { fileURLToPath } from 'url'
 
 /** trade item group id -> ItemCategory value (see src/parser/meta.ts) */
 const BASE_GROUPS = {
-  viscera: 'Viscera'
+  viscera: 'Viscera',
+  jewel: 'Jewel' // Mycelium Core
 }
 
 /** static groups that are not real items (search helpers) */
 const SKIP_STATIC_GROUPS = new Set(['MapKey', 'MapsSpecial', 'MapsUnique', 'Heist'])
+
+/** modifier types the app searches by (scourge, crucible, sanctum, ... are not supported) */
+const NEW_STAT_TYPES = new Set(['explicit', 'implicit', 'crafted', 'fractured', 'enchant', 'veiled', 'imbued'])
+
+/** unique maps need area data that the trade site doesn't have */
+const SKIP_UNIQUE_GROUPS = new Set(['map'])
 
 const args = process.argv.slice(2)
 const DRY = args.includes('--dry')
@@ -155,6 +166,35 @@ for (const [groupId, category] of Object.entries(BASE_GROUPS)) {
   }
 }
 
+// 2b. unique items
+{
+  const knownBases = new Set([...existing, ...toAdd]
+    .filter((/** @type {any} */ item) => item.namespace === 'ITEM').map((/** @type {any} */ item) => item.name))
+  const knownUniques = new Set(existing
+    .filter(item => item.namespace === 'UNIQUE').map(item => `${item.name}|${item.unique.base}`))
+  const otherNames = new Set(existing.filter(item => item.namespace !== 'UNIQUE').map(item => item.name))
+  for (const group of itemsData.result) {
+    if (SKIP_UNIQUE_GROUPS.has(group.id)) continue
+    for (const entry of group.entries) {
+      if (!entry.name || !entry.flags?.unique) continue
+      const key = `${entry.name}|${entry.type}`
+      if (knownUniques.has(key) || otherNames.has(entry.name)) continue
+      if (!knownBases.has(entry.type)) {
+        console.warn(`Unique "${entry.name}": base "${entry.type}" is unknown, skipping (add its trade group to BASE_GROUPS).`)
+        continue
+      }
+      knownUniques.add(key)
+      add({
+        name: entry.name,
+        refName: entry.name,
+        namespace: 'UNIQUE',
+        unique: { base: entry.type },
+        icon: ''
+      }, `${group.id} unique`)
+    }
+  }
+}
+
 async function iconsFromSearch (/** @type {string} */ category) {
   /** @type {Map<string, { icon: string, w: number, h: number }>} */
   const icons = new Map()
@@ -242,6 +282,51 @@ for (const group of statsData.result) {
   }
 }
 
+// 4. new modifiers: trade stats with an id that no local stat has
+/** trade id without its "explicit." prefix, the same for every modifier type */
+const baseId = (/** @type {string} */ id) => id.slice(id.indexOf('.') + 1)
+const knownBaseIds = new Set([...statsByTradeId.keys()].map(baseId))
+/** @type {Map<string, { texts: string[], ids: Record<string, string[]> }>} */
+const newStats = new Map()
+for (const group of statsData.result) {
+  for (const entry of group.entries) {
+    const type = entry.id.slice(0, entry.id.indexOf('.'))
+    if (!NEW_STAT_TYPES.has(type) || entry.option) continue
+    if (/ \([^)]*\)$/.test(entry.text)) continue
+    const id = baseId(entry.id)
+    if (knownBaseIds.has(id)) continue
+    const matcher = entry.text.replace(/[+-]#/g, '#')
+    const stat = newStats.get(id) ?? { texts: [], ids: {} }
+    if (!stat.texts.includes(matcher)) stat.texts.push(matcher)
+    ;(stat.ids[type] ??= []).includes(entry.id) || stat.ids[type].push(entry.id)
+    newStats.set(id, stat)
+  }
+}
+/** texts used by more than one new stat can't be told apart */
+const textUses = new Map()
+for (const { texts } of newStats.values()) {
+  for (const text of texts) textUses.set(text, (textUses.get(text) ?? 0) + 1)
+}
+const multiLinePrefixes = new Set([...knownMatchers.keys()].flatMap(m => {
+  const lines = m.split('\n')
+  return lines.slice(1).map((_, i) => lines.slice(0, i + 1).join('\n'))
+}))
+/** @type {string[]} */
+const newStatLines = []
+for (const { texts, ids } of newStats.values()) {
+  // skip texts that exist, are ambiguous, or would cut a known multi-line modifier short
+  const usable = texts.filter(text => !knownMatchers.has(text) && textUses.get(text) === 1 && !multiLinePrefixes.has(text))
+  if (!usable.length) continue
+  for (const text of usable) knownMatchers.set(text, -1)
+  newStatLines.push(JSON.stringify({
+    ref: usable[0],
+    better: usable[0].includes('#') ? 1 : 0,
+    matchers: usable.map(string => ({ string })),
+    trade: { ids }
+  }))
+  statReport.push(`new: ${JSON.stringify(usable[0])}`)
+}
+
 console.log(report.join('\n'))
 console.log(`\n${toAdd.length} item(s) ${DRY ? 'would be added' : 'added'} to ${path.relative(process.cwd(), ITEMS_FILE)}`)
 if (!DRY && toAdd.length) {
@@ -250,7 +335,10 @@ if (!DRY && toAdd.length) {
 
 console.log('\n' + statReport.join('\n'))
 console.log(`\n${statReport.length} modifier text(s) ${DRY ? 'would be added' : 'added'} to ${path.relative(process.cwd(), STATS_FILE)}`)
-if (!DRY && changedLines.size) {
+if (!DRY && (changedLines.size || newStatLines.length)) {
   for (const line of changedLines) statLines[line] = JSON.stringify(statEntries[line])
+  // keep the trailing newline: the last element is the empty string after it
+  if (statLines[statLines.length - 1] === '') statLines.pop()
+  statLines.push(...newStatLines, '')
   fs.writeFileSync(STATS_FILE, statLines.join(statsEol))
 }
