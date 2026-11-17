@@ -216,6 +216,10 @@ function findInDatabase (item: ParserState) {
         item.info.unique.base)![0].craftable!.category
     }
   }
+  // Viscera have no "Rarity:" line, treat them as normal items so implicits get parsed
+  if (item.category === ItemCategory.Viscera && item.rarity === undefined) {
+    item.rarity = ItemRarity.Normal
+  }
 }
 
 export function makeIdentifiedUnique (uniqueInfo: BaseType, unidentified: ParsedItem): ParsedItem {
