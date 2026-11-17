@@ -459,7 +459,7 @@ function ritualVesselFilters (monsters: NonNullable<ParsedItem['ritualMonsters']
     countFilter('pseudo.pseudo_ritual_unique_monsters', 'Unique Monsters (Blood-Filled Vessel): #',
       monsters.unique.length, monsters.unique.length === 0),
     countFilter('pseudo.pseudo_ritual_other_monsters', 'Non-Unique Monsters (Blood-Filled Vessel): #',
-      monsters.other, true)
+      monsters.other, monsters.other === 0)
   ]
 }
 

@@ -87,6 +87,20 @@ export function createFilters (
     }
     return filters
   }
+  if (item.ritualMonsters) {
+    // Blood-filled Vessel: the trade site indexes its "Monster Level" as Area Level
+    filters.searchExact = {
+      baseType: item.info.name,
+      baseTypeTrade: t(opts, item.info)
+    }
+    if (item.ritualMonsters.monsterLevel) {
+      filters.areaLevel = {
+        value: item.ritualMonsters.monsterLevel,
+        disabled: false
+      }
+    }
+    return filters
+  }
   if (item.info.refName === 'Scrying Orb') {
     filters.searchExact = {
       baseType: item.info.name,

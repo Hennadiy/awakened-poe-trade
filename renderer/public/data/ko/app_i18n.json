@@ -58,6 +58,7 @@
     "stock": "홈: {0}",
     "map_tier": "지도 등급: {0}",
     "area_level": "지역 레벨: {0}",
+    "monster_level": "몬스터 레벨: {0}",
     "heist_job_lockpicking": "자물쇠 따기 필요({0}레벨)",
     "heist_job_bruteforce": "완력 필요({0}레벨)",
     "heist_job_perception": "통찰력 필요({0}레벨)",

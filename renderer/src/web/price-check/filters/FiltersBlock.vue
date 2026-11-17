@@ -10,7 +10,7 @@
       <filter-btn-logical v-if="filters.mapCompletionReward" readonly
         :filter="{ disabled: false }" :text="t('item.map_foil_reward', [filters.mapCompletionReward.name])" />
       <filter-btn-numeric v-if="filters.areaLevel"
-        :filter="filters.areaLevel" :name="t('item.area_level')" />
+        :filter="filters.areaLevel" :name="t(item.ritualMonsters ? 'item.monster_level' : 'item.area_level')" />
       <filter-btn-numeric v-if="filters.sentinelCharge"
         :filter="filters.sentinelCharge" :name="t('item.sentinel_charge')" />
       <filter-btn-numeric v-if="filters.itemLevel"
