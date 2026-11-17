@@ -26,6 +26,33 @@ npm ci
 npm run dev
 ```
 
+On a fresh clone the first `npm run dev` in `renderer` generates the
+`public/data/**/*.index.bin` files after Vite has started, and the app fails to
+load item data. Restart the renderer dev server once and it works.
+
+# Adding new league items
+
+When a league adds items the app doesn't recognize, pull them from the trade site.
+GGG asks API clients to send a User-Agent that identifies them, so set one first:
+
+```shell
+cd renderer
+export POE_TRADE_USER_AGENT="OAuth <app-name>/<version> (contact: <your email>)"
+# PowerShell: $env:POE_TRADE_USER_AGENT = "OAuth <app-name>/<version> (contact: <your email>)"
+npm run sync-trade-data -- --dry                      # list what's missing
+npm run sync-trade-data                               # add it
+npm run sync-trade-data -- --icons --league "Covens"  # add it, with icons for new bases
+```
+
+The trade site bans IPs that flood it. A normal run sends 2 requests; `--icons`
+adds a few more, spaced 5s apart. The script stops on the first rate-limit reply.
+Run it once per league, not in a loop.
+
+It appends bulk-exchange items (currency, fragments, cards) and base types of the
+item groups listed in `BASE_GROUPS` to `public/data/en/items.ndjson`. A brand new
+item group (like Viscera) also needs an `ItemCategory` and a trade category mapping,
+see `src/parser/meta.ts` and `src/web/price-check/trade/pathofexile-trade.ts`.
+
 # How to build
 
 ```shell
