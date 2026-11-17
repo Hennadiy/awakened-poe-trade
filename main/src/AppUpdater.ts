@@ -2,6 +2,8 @@ import { autoUpdater } from 'electron-updater'
 import type { ServerEvents } from './server'
 import type { UpdateInfo } from '../../ipc/types'
 
+const UPDATES_DISABLED = true
+
 export class AppUpdater {
   private _checkedAtStartup = false
   private _info: UpdateInfo = { state: 'initial' }
@@ -32,9 +34,11 @@ export class AppUpdater {
     })
 
     // https://www.electron.build/configuration/nsis.html#portable
-    autoUpdater.autoDownload = !process.env.PORTABLE_EXECUTABLE_DIR
+    autoUpdater.autoDownload = !UPDATES_DISABLED && !process.env.PORTABLE_EXECUTABLE_DIR
 
-    if (!autoUpdater.autoDownload || process.platform === 'darwin') {
+    if (UPDATES_DISABLED) {
+      this.noAutoUpdatesReason = 'disabled-by-flag'
+    } else if (!autoUpdater.autoDownload || process.platform === 'darwin') {
       this.noAutoUpdatesReason = 'not-supported'
     } else if (process.argv.includes('--no-updates')) {
       autoUpdater.autoDownload = false
@@ -67,6 +71,8 @@ export class AppUpdater {
   }
 
   private check = async () => {
+    // Updates are disabled in this fork: upstream releases would overwrite local changes.
+    if (UPDATES_DISABLED) return
     try {
       await autoUpdater.checkForUpdates()
     } catch {
