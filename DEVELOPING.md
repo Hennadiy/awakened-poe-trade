@@ -30,6 +30,23 @@ On a fresh clone the first `npm run dev` in `renderer` generates the
 `public/data/**/*.index.bin` files after Vite has started, and the app fails to
 load item data. Restart the renderer dev server once and it works.
 
+# Local install (Windows)
+
+```shell
+cd main
+npm run install-local
+```
+
+Builds the app and installs it into `%LOCALAPPDATA%\Programs\Awakened PoE Trade`
+(over the official install, so its Start menu shortcut opens this build), registers it
+to start with Windows, and starts it. It also installs a git `post-commit` hook: every
+commit on the `dio-ver` branch rebuilds and reinstalls in the background
+(log: `main/dist/local-install.log`).
+
+`npm run dev` in `main` closes the installed app first (they share hotkeys, config and
+the single-instance lock) and starts it again when dev is stopped with Ctrl-C.
+A reinstall that happens while dev is running doesn't start the installed app.
+
 # Adding new league items
 
 When a league adds items the app doesn't recognize, pull them from the trade site.

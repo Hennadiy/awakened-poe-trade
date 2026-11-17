@@ -5,6 +5,23 @@ import esbuild from 'esbuild'
 
 const isDev = !process.argv.includes('--prod')
 
+// The installed app shares the config dir and single-instance lock with the dev build,
+// and both would grab the same hotkeys. Stop it while developing, restart it on exit.
+if (isDev && process.platform === 'win32') {
+  const local = await import('./local-install.mjs')
+  local.stopInstalled()
+  const restart = () => {
+    try {
+      if (!local.isInstalledRunning()) local.startInstalled()
+    } finally {
+      process.exit()
+    }
+  }
+  process.on('SIGINT', restart)
+  process.on('SIGHUP', restart)
+  process.on('SIGTERM', restart)
+}
+
 const electronRunner = (() => {
   /** @type {child_process.ChildProcess | null} */
   let handle = null
