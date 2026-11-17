@@ -26,3 +26,6 @@ yarn-error.log*
 # vitepress
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# trade API responses saved by scripts/sync-trade-data.mjs
+renderer/.trade-data

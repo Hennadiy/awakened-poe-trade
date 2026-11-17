@@ -61,12 +61,15 @@ npm run sync-trade-data                               # add it
 npm run sync-trade-data -- --icons --league "Covens"  # add it, with icons for new bases
 ```
 
-The trade site bans IPs that flood it. A normal run sends 2 requests; `--icons`
+The trade site bans IPs that flood it. A normal run sends 3 requests; `--icons`
 adds a few more, spaced 5s apart. The script stops on the first rate-limit reply.
-Run it once per league, not in a loop.
+Run it once per league, not in a loop. Responses are saved to `renderer/.trade-data`;
+add `--offline` to rerun from them without asking the site again.
 
 It appends bulk-exchange items (currency, fragments, cards) and base types of the
-item groups listed in `BASE_GROUPS` to `public/data/en/items.ndjson`. A brand new
+item groups listed in `BASE_GROUPS` to `public/data/en/items.ndjson`, and adds the
+trade site's wording of reworded modifiers (e.g. "+#% to Item Rarity") to
+`public/data/en/stats.ndjson`, keeping the old wording. A brand new
 item group (like Viscera) also needs an `ItemCategory` and a trade category mapping,
 see `src/parser/meta.ts` and `src/web/price-check/trade/pathofexile-trade.ts`.
 
