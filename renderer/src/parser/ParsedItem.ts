@@ -79,6 +79,11 @@ export interface ParsedItem {
   isSplit?: boolean
   influences: ItemInfluence[]
   sentinelCharge?: number
+  ritualMonsters?: {
+    unique: string[]
+    other: number
+    monsterLevel?: number
+  }
   isSynthesised?: boolean
   isFractured?: boolean
   isVeiled?: boolean

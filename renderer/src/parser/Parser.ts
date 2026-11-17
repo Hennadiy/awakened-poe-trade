@@ -59,6 +59,7 @@ const parsers: Array<ParserFn | { virtual: VirtualParserFn }> = [
   parseHeistContract,
   parseHeistBlueprint,
   parseChart,
+  parseRitualVessel,
   parseAreaLevel,
   parseAtzoatlRooms,
   parseMirroredTablet,
@@ -1065,6 +1066,35 @@ function parseHeistBlueprint (section: string[], item: ParsedItem) {
       item.heistBlueprint.wingsTotal = parseInt(total, 10)
     }
   }
+
+  return 'SECTION_PARSED'
+}
+
+// English only: these lines are not in client_strings yet
+const RITUAL_VESSEL = {
+  REF_NAME: 'Blood-filled Vessel',
+  MONSTERS: 'Monsters:',
+  MONSTER_LEVEL: 'Monster Level: ',
+  FROM: 'From: ',
+  OTHER_MONSTERS: /^(\d+) Other Monsters?$/
+}
+
+function parseRitualVessel (section: string[], item: ParsedItem) {
+  if (item.info.refName !== RITUAL_VESSEL.REF_NAME) return 'PARSER_SKIPPED'
+  if (section[0] !== RITUAL_VESSEL.MONSTERS) return 'SECTION_SKIPPED'
+
+  const monsters: NonNullable<ParsedItem['ritualMonsters']> = { unique: [], other: 0 }
+  for (const line of section.slice(1)) {
+    const other = RITUAL_VESSEL.OTHER_MONSTERS.exec(line)
+    if (other) {
+      monsters.other = Number(other[1])
+    } else if (line.startsWith(RITUAL_VESSEL.MONSTER_LEVEL)) {
+      monsters.monsterLevel = Number(line.slice(RITUAL_VESSEL.MONSTER_LEVEL.length))
+    } else if (!line.startsWith(RITUAL_VESSEL.FROM)) {
+      monsters.unique.push(line)
+    }
+  }
+  item.ritualMonsters = monsters
 
   return 'SECTION_PARSED'
 }

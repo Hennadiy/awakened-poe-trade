@@ -5204,3 +5204,4 @@
 {"name":"Omen of Revenge","refName":"Omen of Revenge","namespace":"ITEM","tradeTag":"omen-of-revenge","exchangeable":true,"icon":""}
 {"name":"Omen of Bequeathal","refName":"Omen of Bequeathal","namespace":"ITEM","tradeTag":"omen-of-bequeathal","exchangeable":true,"icon":""}
 {"name":"Omen of Resurgence","refName":"Omen of Resurgence","namespace":"ITEM","tradeTag":"omen-of-resurgence","exchangeable":true,"icon":""}
+{"name":"Blood-filled Vessel","refName":"Blood-filled Vessel","namespace":"ITEM","icon":"https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvUml0dWFsL0Jsb29kU29ha2VkRWZmaWd5IiwidyI6MSwiaCI6MSwic2NhbGUiOjF9XQ/1adc81c853/BloodSoakedEffigy.png"}

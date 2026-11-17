@@ -82,6 +82,9 @@ export function createExactStatFilters (
     ...ctx.statsByType.map(mod => calculatedStatToFilter(mod, ctx.searchInRange, item))
   )
 
+  if (item.ritualMonsters) {
+    return ritualVesselFilters(item.ritualMonsters)
+  }
   if (item.info.refName === 'Chronicle of Atzoatl') {
     applyAtzoatlRules(ctx.filters)
     return ctx.filters
@@ -431,6 +434,33 @@ function filterAdjustmentForNegate (
   roll.max = (typeof swap.min === 'number')
     ? -1 * swap.min
     : undefined
+}
+
+// The trade site can't search for which unique monster is stored, only how many
+function ritualVesselFilters (monsters: NonNullable<ParsedItem['ritualMonsters']>): StatFilter[] {
+  const countFilter = (tradeId: string, text: string, value: number, disabled: boolean): StatFilter => ({
+    tradeId: [tradeId],
+    statRef: text,
+    text,
+    tag: FilterTag.Pseudo,
+    sources: [],
+    disabled,
+    roll: {
+      value,
+      min: value,
+      max: undefined,
+      default: { min: value, max: value },
+      dp: false,
+      isNegated: false
+    }
+  })
+
+  return [
+    countFilter('pseudo.pseudo_ritual_unique_monsters', 'Unique Monsters (Blood-Filled Vessel): #',
+      monsters.unique.length, monsters.unique.length === 0),
+    countFilter('pseudo.pseudo_ritual_other_monsters', 'Non-Unique Monsters (Blood-Filled Vessel): #',
+      monsters.other, true)
+  ]
 }
 
 function finalFilterTweaks (ctx: FiltersCreationContext) {
