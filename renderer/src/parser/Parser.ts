@@ -178,6 +178,9 @@ function normalizeName (item: ParserState) {
   }
 }
 
+// TODO: English only, like other Covens additions
+const VISCERA_TIER = /^(?:Lesser|Greater) (.+)$/
+
 function findInDatabase (item: ParserState) {
   let info: BaseType[] | undefined
   if (item.category === ItemCategory.DivinationCard) {
@@ -194,6 +197,17 @@ function findInDatabase (item: ParserState) {
     info = ITEM_BY_TRANSLATED('UNIQUE', item.name)
   } else {
     info = ITEM_BY_TRANSLATED('ITEM', item.baseType ?? item.name)
+    if (!info?.length) {
+      // Viscera come in "Lesser" and "Greater" tiers of the same base type,
+      // and the trade site searches all tiers by the plain base type
+      const tier = VISCERA_TIER.exec(item.baseType ?? item.name)
+      const base = tier && ITEM_BY_TRANSLATED('ITEM', tier[1])
+      if (base?.[0]?.craftable?.category === ItemCategory.Viscera) {
+        info = base
+        if (item.baseType) item.baseType = tier![1]
+        else item.name = tier![1]
+      }
+    }
   }
   if (!info?.length) {
     return err('item.unknown')
