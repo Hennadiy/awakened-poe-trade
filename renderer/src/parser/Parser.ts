@@ -136,7 +136,9 @@ export function parseClipboard (clipboard: string): Result<ParsedItem, string> {
 }
 
 function itemTextToSections (text: string) {
-  const lines = text.split(/\r?\n/)
+  // the game puts zero-width spaces in some lines,
+  // e.g. "Trigger Level 20 <U+200B>Summon Void Spawn every 4 seconds"
+  const lines = text.replace(/[\u200B-\u200D\uFEFF]/g, '').split(/\r?\n/)
   if (lines[lines.length - 1] === '') {
     lines.pop()
   }
