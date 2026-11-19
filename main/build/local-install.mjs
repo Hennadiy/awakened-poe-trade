@@ -2,6 +2,7 @@
 // Builds this fork and installs it over the local Windows install, then (re)starts it.
 //
 //   npm run install-local            (from main/)
+//   npm run update-local             (from main/; or update-app.cmd / the Start menu shortcut)
 //   node build/local-install.mjs --hook   (used by .git/hooks/post-commit)
 //
 // - Installs into %LOCALAPPDATA%\Programs\Awakened PoE Trade (same place as the official
@@ -9,6 +10,8 @@
 // - Adds a "start with Windows" entry (HKCU\...\Run).
 // - Doesn't start the installed app while `npm run dev` is running (they would overlap).
 // - Installs the post-commit hook that reruns this after every commit on BRANCH.
+// - Adds an "Update Awakened PoE Trade" Start menu shortcut (runs update-app.cmd):
+//   pulls BRANCH from origin, reinstalls npm packages if they changed, then builds and installs.
 // Log of hook runs: main/dist/local-install.log
 
 import child_process from 'child_process'
@@ -27,6 +30,8 @@ const REPO_DIR = path.resolve(MAIN_DIR, '..')
 const RENDERER_DIR = path.join(REPO_DIR, 'renderer')
 const UNPACKED_DIR = path.join(MAIN_DIR, 'dist', 'win-unpacked')
 const LOCK_FILE = path.join(MAIN_DIR, 'dist', 'local-install.lock')
+const UPDATE_CMD = path.join(REPO_DIR, 'update-app.cmd')
+const UPDATE_SHORTCUT = path.join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', `Update ${PRODUCT_NAME}.lnk`)
 
 const log = (/** @type {string} */ msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`)
 
@@ -92,6 +97,41 @@ function installHook () {
   }
 }
 
+function installUpdateShortcut () {
+  const q = (/** @type {string} */ s) => `'${s.replace(/'/g, "''")}'`
+  powershell([
+    `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(UPDATE_SHORTCUT)})`,
+    `$s.TargetPath = ${q(UPDATE_CMD)}`,
+    `$s.WorkingDirectory = ${q(REPO_DIR)}`,
+    `$s.IconLocation = ${q(INSTALLED_EXE + ',0')}`,
+    `$s.Description = ${q(`Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`)}`,
+    '$s.Save()'
+  ].join('; '))
+}
+
+function git (/** @type {string} */ args) {
+  return child_process.execSync(`git ${args}`, { cwd: REPO_DIR, encoding: 'utf-8' }).trim()
+}
+
+/** Pulls BRANCH from origin; reinstalls npm packages of the parts whose lockfile changed. */
+function pull () {
+  const branch = git('rev-parse --abbrev-ref HEAD')
+  if (branch !== BRANCH) {
+    throw new Error(`The repo is on branch "${branch}", switch to "${BRANCH}" to update`)
+  }
+  const before = git('rev-parse HEAD')
+  run(`git pull --ff-only origin ${BRANCH}`, REPO_DIR)
+  const after = git('rev-parse HEAD')
+  if (before === after) {
+    log('No new commits, reinstalling the current version')
+    return
+  }
+  const changed = git(`diff --name-only ${before} ${after}`).split('\n')
+  for (const dir of [RENDERER_DIR, MAIN_DIR]) {
+    if (changed.includes(`${path.basename(dir)}/package-lock.json`)) run('npm ci', dir)
+  }
+}
+
 /** One build+install at a time; a commit during a build triggers one more run afterwards. */
 function acquireLock () {
   fs.mkdirSync(path.dirname(LOCK_FILE), { recursive: true })
@@ -119,6 +159,7 @@ function buildAndInstall () {
   log(`Copying build to ${INSTALL_DIR}`)
   fs.cpSync(UNPACKED_DIR, INSTALL_DIR, { recursive: true, force: true })
   registerStartup()
+  installUpdateShortcut()
 
   if (devRunning) {
     log('Dev build is running, not starting the installed app (it starts again when dev stops)')
@@ -140,6 +181,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 
   if (acquireLock()) {
     try {
+      if (process.argv.includes('--update')) pull()
       do {
         fs.writeFileSync(LOCK_FILE, String(process.pid))
         buildAndInstall()

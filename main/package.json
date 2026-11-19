@@ -7,6 +7,7 @@
     "build": "tsc --noEmit && node build/script.mjs --prod",
     "package": "electron-builder build",
     "install-local": "node build/local-install.mjs",
+    "update-local": "node build/local-install.mjs --update",
     "postinstall": "patch-package --patch-dir build"
   },
   "author": {

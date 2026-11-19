@@ -43,6 +43,11 @@ to start with Windows, and starts it. It also installs a git `post-commit` hook:
 commit on the `dio-ver` branch rebuilds and reinstalls in the background
 (log: `main/dist/local-install.log`).
 
+To update, run **Update Awakened PoE Trade** from the Start menu (or double-click
+`update-app.cmd`, or `npm run update-local` in `main`). It pulls the latest `dio-ver`
+from GitHub (fast-forward only), runs `npm ci` where `package-lock.json` changed, then
+rebuilds, reinstalls and restarts the app. With nothing new to pull it just reinstalls.
+
 `npm run dev` in `main` closes the installed app first (they share hotkeys, config and
 the single-instance lock) and starts it again when dev is stopped with Ctrl-C.
 A reinstall that happens while dev is running doesn't start the installed app.
