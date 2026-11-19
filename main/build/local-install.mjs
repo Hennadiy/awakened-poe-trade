@@ -1,16 +1,17 @@
 // @ts-check
-// Builds this fork and installs it over the local Windows install, then (re)starts it.
+// Builds this fork and installs it for the current Windows user, then (re)starts it.
 //
 //   npm run install-local            (from main/)
 //   npm run update-local             (from main/; or update-app.cmd / the Start menu shortcut)
 //   node build/local-install.mjs --hook   (used by .git/hooks/post-commit)
 //
-// - Installs into %LOCALAPPDATA%\Programs\Awakened PoE Trade (same place as the official
-//   installer, so its Start menu shortcut opens this build).
+// - Installs into %LOCALAPPDATA%\Programs\<PRODUCT_NAME> with a Start menu shortcut.
+//   Settings stay in %APPDATA%\awakened-poe-trade, shared with the official app.
+// - Uninstalls the official "Awakened PoE Trade" (it would start with Windows too).
 // - Adds a "start with Windows" entry (HKCU\...\Run).
 // - Doesn't start the installed app while `npm run dev` is running (they would overlap).
 // - Installs the post-commit hook that reruns this after every commit on BRANCH.
-// - Adds an "Update Awakened PoE Trade" Start menu shortcut (runs update-app.cmd):
+// - Adds an "Update <PRODUCT_NAME>" Start menu shortcut (runs update-app.cmd):
 //   pulls BRANCH from origin, reinstalls npm packages if they changed, then builds and installs.
 // Log of hook runs: main/dist/local-install.log
 
@@ -20,10 +21,15 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 export const BRANCH = 'dio-ver'
-export const PRODUCT_NAME = 'Awakened PoE Trade'
+export const PRODUCT_NAME = 'Awakened POE Trade f. Dio' // productName in electron-builder.yml
 export const INSTALL_DIR = path.join(process.env.LOCALAPPDATA ?? '', 'Programs', PRODUCT_NAME)
 export const INSTALLED_EXE = path.join(INSTALL_DIR, `${PRODUCT_NAME}.exe`)
 const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+const START_MENU = path.join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs')
+const APP_SHORTCUT = path.join(START_MENU, `${PRODUCT_NAME}.lnk`)
+// the official app, and the name this fork used to install under
+const OFFICIAL_NAME = 'Awakened PoE Trade'
+const OFFICIAL_DIR = path.join(process.env.LOCALAPPDATA ?? '', 'Programs', OFFICIAL_NAME)
 
 const MAIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const REPO_DIR = path.resolve(MAIN_DIR, '..')
@@ -31,7 +37,7 @@ const RENDERER_DIR = path.join(REPO_DIR, 'renderer')
 const UNPACKED_DIR = path.join(MAIN_DIR, 'dist', 'win-unpacked')
 const LOCK_FILE = path.join(MAIN_DIR, 'dist', 'local-install.lock')
 const UPDATE_CMD = path.join(REPO_DIR, 'update-app.cmd')
-const UPDATE_SHORTCUT = path.join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', `Update ${PRODUCT_NAME}.lnk`)
+const UPDATE_SHORTCUT = path.join(START_MENU, `Update ${PRODUCT_NAME}.lnk`)
 
 const log = (/** @type {string} */ msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`)
 
@@ -97,16 +103,49 @@ function installHook () {
   }
 }
 
-function installUpdateShortcut () {
-  const q = (/** @type {string} */ s) => `'${s.replace(/'/g, "''")}'`
+const psQuote = (/** @type {string} */ s) => `'${s.replace(/'/g, "''")}'`
+
+function createShortcut (/** @type {string} */ file, /** @type {string} */ target, /** @type {string} */ workDir, /** @type {string} */ description) {
+  const q = psQuote
   powershell([
-    `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(UPDATE_SHORTCUT)})`,
-    `$s.TargetPath = ${q(UPDATE_CMD)}`,
-    `$s.WorkingDirectory = ${q(REPO_DIR)}`,
+    `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(file)})`,
+    `$s.TargetPath = ${q(target)}`,
+    `$s.WorkingDirectory = ${q(workDir)}`,
     `$s.IconLocation = ${q(INSTALLED_EXE + ',0')}`,
-    `$s.Description = ${q(`Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`)}`,
+    `$s.Description = ${q(description)}`,
     '$s.Save()'
   ].join('; '))
+}
+
+function installShortcuts () {
+  createShortcut(APP_SHORTCUT, INSTALLED_EXE, INSTALL_DIR, PRODUCT_NAME)
+  createShortcut(UPDATE_SHORTCUT, UPDATE_CMD, REPO_DIR, `Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`)
+}
+
+/** Removes the official app (or this fork installed under its name): process, files, autostart, shortcuts. */
+function removeOfficialInstall () {
+  const uninstaller = path.join(OFFICIAL_DIR, `Uninstall ${OFFICIAL_NAME}.exe`)
+  const officialExe = path.join(OFFICIAL_DIR, `${OFFICIAL_NAME}.exe`)
+  if (fs.existsSync(officialExe)) {
+    log(`Removing ${OFFICIAL_DIR}`)
+    try {
+      child_process.execFileSync('taskkill', ['/F', '/T', '/IM', `${OFFICIAL_NAME}.exe`], { stdio: 'ignore' })
+    } catch {}
+    if (fs.existsSync(uninstaller)) {
+      // NSIS relaunches itself from %TEMP% and returns at once, wait for it to finish
+      try { child_process.execFileSync(uninstaller, ['/currentuser', '/S'], { stdio: 'ignore' }) } catch {}
+      for (let i = 0; i < 30 && fs.existsSync(officialExe); i++) {
+        child_process.execSync('ping -n 2 127.0.0.1 > nul')
+      }
+    }
+    fs.rmSync(OFFICIAL_DIR, { recursive: true, force: true })
+  }
+  try {
+    child_process.execFileSync('reg', ['delete', RUN_KEY, '/v', OFFICIAL_NAME, '/f'], { stdio: 'ignore' })
+  } catch {}
+  for (const name of [`${OFFICIAL_NAME}.lnk`, `Update ${OFFICIAL_NAME}.lnk`]) {
+    fs.rmSync(path.join(START_MENU, name), { force: true })
+  }
 }
 
 function git (/** @type {string} */ args) {
@@ -156,10 +195,11 @@ function buildAndInstall () {
 
   const devRunning = isDevRunning()
   stopInstalled()
+  removeOfficialInstall()
   log(`Copying build to ${INSTALL_DIR}`)
   fs.cpSync(UNPACKED_DIR, INSTALL_DIR, { recursive: true, force: true })
   registerStartup()
-  installUpdateShortcut()
+  installShortcuts()
 
   if (devRunning) {
     log('Dev build is running, not starting the installed app (it starts again when dev stops)')

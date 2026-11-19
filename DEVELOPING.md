@@ -37,13 +37,15 @@ cd main
 npm run install-local
 ```
 
-Builds the app and installs it into `%LOCALAPPDATA%\Programs\Awakened PoE Trade`
-(over the official install, so its Start menu shortcut opens this build), registers it
-to start with Windows, and starts it. It also installs a git `post-commit` hook: every
-commit on the `dio-ver` branch rebuilds and reinstalls in the background
-(log: `main/dist/local-install.log`).
+Builds the app as **Awakened POE Trade f. Dio**, installs it into
+`%LOCALAPPDATA%\Programs\Awakened POE Trade f. Dio` with a Start menu shortcut,
+registers it to start with Windows, and starts it. It uninstalls the official
+"Awakened PoE Trade" if it's there (both would start with Windows and fight over the
+hotkeys); settings in `%APPDATA%\awakened-poe-trade` are shared and kept. It also
+installs a git `post-commit` hook: every commit on the `dio-ver` branch rebuilds and
+reinstalls in the background (log: `main/dist/local-install.log`).
 
-To update, run **Update Awakened PoE Trade** from the Start menu (or double-click
+To update, run **Update Awakened POE Trade f. Dio** from the Start menu (or double-click
 `update-app.cmd`, or `npm run update-local` in `main`). It pulls the latest `dio-ver`
 from GitHub (fast-forward only), runs `npm ci` where `package-lock.json` changed, then
 rebuilds, reinstalls and restarts the app. With nothing new to pull it just reinstalls.
@@ -51,6 +53,10 @@ rebuilds, reinstalls and restarts the app. With nothing new to pull it just rein
 `npm run dev` in `main` closes the installed app first (they share hotkeys, config and
 the single-instance lock) and starts it again when dev is stopped with Ctrl-C.
 A reinstall that happens while dev is running doesn't start the installed app.
+
+The version (`version` in `main/package.json`, shown in the tray and settings) follows
+the game: `3.<PoE minor>.<build>`, e.g. `3.30.0` for PoE 3.30. When a new league comes
+out, set it to `3.<new minor>.0`; bump the last number for releases within a league.
 
 # Adding new league items
 
