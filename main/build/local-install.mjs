@@ -25,6 +25,7 @@ export const PRODUCT_NAME = 'Awakened POE Trade f. Dio' // productName in electr
 export const INSTALL_DIR = path.join(process.env.LOCALAPPDATA ?? '', 'Programs', PRODUCT_NAME)
 export const INSTALLED_EXE = path.join(INSTALL_DIR, `${PRODUCT_NAME}.exe`)
 const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+const STARTUP_APPROVED_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run'
 const START_MENU = path.join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs')
 const APP_SHORTCUT = path.join(START_MENU, `${PRODUCT_NAME}.lnk`)
 // the official app, and the name this fork used to install under
@@ -84,6 +85,17 @@ export function startInstalled () {
 
 function registerStartup () {
   child_process.execFileSync('reg', ['add', RUN_KEY, '/v', PRODUCT_NAME, '/t', 'REG_SZ', '/d', `"${INSTALLED_EXE}"`, '/f'], { stdio: 'ignore' })
+  // Windows skips Run entries that have no record here (seen on Windows 11 build 26300).
+  // 02 = enabled, 03 = disabled in Task Manager > Startup apps: keep the user's choice.
+  let approved = true
+  try {
+    child_process.execFileSync('reg', ['query', STARTUP_APPROVED_KEY, '/v', PRODUCT_NAME], { stdio: 'ignore' })
+  } catch {
+    approved = false
+  }
+  if (!approved) {
+    child_process.execFileSync('reg', ['add', STARTUP_APPROVED_KEY, '/v', PRODUCT_NAME, '/t', 'REG_BINARY', '/d', '020000000000000000000000', '/f'], { stdio: 'ignore' })
+  }
   log('Registered to start with Windows')
 }
 
@@ -140,9 +152,11 @@ function removeOfficialInstall () {
     }
     fs.rmSync(OFFICIAL_DIR, { recursive: true, force: true })
   }
-  try {
-    child_process.execFileSync('reg', ['delete', RUN_KEY, '/v', OFFICIAL_NAME, '/f'], { stdio: 'ignore' })
-  } catch {}
+  for (const key of [RUN_KEY, STARTUP_APPROVED_KEY]) {
+    try {
+      child_process.execFileSync('reg', ['delete', key, '/v', OFFICIAL_NAME, '/f'], { stdio: 'ignore' })
+    } catch {}
+  }
   for (const name of [`${OFFICIAL_NAME}.lnk`, `Update ${OFFICIAL_NAME}.lnk`]) {
     fs.rmSync(path.join(START_MENU, name), { force: true })
   }
