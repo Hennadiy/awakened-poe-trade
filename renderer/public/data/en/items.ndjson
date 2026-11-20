@@ -5484,3 +5484,5 @@
 {"name":"Vestige of Divinity","refName":"Vestige of Divinity","namespace":"UNIQUE","unique":{"base":"Gnarled Branch"},"icon":""}
 {"name":"Wings of Entropy","refName":"Wings of Entropy","namespace":"UNIQUE","unique":{"base":"Sundering Axe"},"icon":""}
 {"name":"Xoph's Inception","refName":"Xoph's Inception","namespace":"UNIQUE","unique":{"base":"Bone Bow"},"icon":""}
+{"name":"Primordial Exalted Orb","refName":"Primordial Exalted Orb","namespace":"ITEM","tradeTag":"primordial-exalted-orb","exchangeable":true,"icon":"https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvU3Ryb25naG9sZHMvUHJpbW9yZGlhbEV4YWx0ZWRPcmIiLCJzY2FsZSI6MX1d/e885112ad7/PrimordialExaltedOrb.png"}
+{"name":"Originator's Exalted Orb","refName":"Originator's Exalted Orb","namespace":"ITEM","tradeTag":"originators-exalted-orb","exchangeable":true,"icon":"https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvQ3VycmVuY3kvU2VjcmV0c29mdGhlQXRsYXMvT3JpZ2luYXRvcnNFeGFsdGVkT3JiIiwic2NhbGUiOjF9XQ/49732248b0/OriginatorsExaltedOrb.png"}

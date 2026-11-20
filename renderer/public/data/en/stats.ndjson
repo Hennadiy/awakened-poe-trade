@@ -11873,3 +11873,8 @@
 {"ref":"1 added passive skill is Vitality Void","better":0,"matchers":[{"string":"1 added passive skill is Vitality Void"}],"trade":{"ids":{"enchant":["enchant.stat_3599615742|39530"]}}}
 {"ref":"Players and Monsters take #% increased Lightning Damage","better":1,"matchers":[{"string":"Players and Monsters take #% increased Lightning Damage"}],"trade":{"ids":{"enchant":["enchant.stat_2400448724"]}}}
 {"ref":"1 added passive skill is Brinkmanship","better":0,"matchers":[{"string":"1 added passive skill is Brinkmanship"}],"trade":{"ids":{"enchant":["enchant.stat_3599615742|20835"]}}}
+{"ref":"#% increased Damage with Claws against Enemies that are on Low Life","better":1,"matchers":[{"string":"#% increased Damage with Claws against Enemies that are on Low Life"}],"trade":{"ids":{"explicit":["explicit.stat_2529155377"]}}}
+{"ref":"Minions convert #% of Physical Damage to Lightning Damage","better":1,"matchers":[{"string":"Minions convert #% of Physical Damage to Lightning Damage"}],"trade":{"ids":{"explicit":["explicit.stat_2105061711"],"fractured":["fractured.stat_2105061711"]}}}
+{"ref":"Socketed Gems are Supported by Level # Greater Unleash Support","better":1,"matchers":[{"string":"Socketed Gems are Supported by Level # Greater Unleash Support"}],"trade":{"ids":{"explicit":["explicit.effect_603124590"]}}}
+{"ref":"Socketed Gems are Supported by Level # Congregation Support","better":1,"matchers":[{"string":"Socketed Gems are Supported by Level # Congregation Support"}],"trade":{"ids":{"explicit":["explicit.effect_3136470162"]}}}
+{"ref":"Killing Blows Consume corpses to Recover #% of Life","better":1,"matchers":[{"string":"Killing Blows Consume corpses to Recover #% of Life"}],"trade":{"ids":{"implicit":["implicit.stat_190157226"]}}}
