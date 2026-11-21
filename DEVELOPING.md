@@ -52,8 +52,12 @@ rebuilds, reinstalls and restarts the app. With nothing new to pull it just rein
 
 Installing from a Claude Code session in the Claude desktop app doesn't work: its
 commands run isolated, so files and registry entries they write outside the repo are
-invisible to Windows. The script (and the post-commit hook after Claude's commits) skips
-the install there; use the Update shortcut instead (`--force` overrides the check).
+invisible to Windows. So an install or update run normally also registers an on-demand
+scheduled task, "Auto-update Awakened POE Trade f. Dio" (runs `main/build/auto-update.cmd`
+hidden, logs to `main/dist/local-install.log`). From Claude Code, the script (and the
+post-commit hook after Claude's commits) only starts that task, which installs in your
+Windows session. Until the task exists, run the Update shortcut once. `--force` installs
+from Claude Code anyway.
 
 `npm run dev` in `main` closes the installed app first (they share hotkeys, config and
 the single-instance lock) and starts it again when dev is stopped with Ctrl-C.

@@ -9,9 +9,13 @@
 //   Settings stay in %APPDATA%\awakened-poe-trade, shared with the official app.
 // - Uninstalls the official "Awakened PoE Trade" (it would start with Windows too).
 // - Adds a "start with Windows" entry (HKCU\...\Run).
-// - Does nothing when started from Claude Code (CLAUDECODE=1, also inherited by the git
-//   hook after its commits): its file/registry writes outside the repo are isolated.
-//   --force overrides that, e.g. for the Claude Code CLI in a normal terminal.
+// - Registers an on-demand scheduled task "Auto-update <PRODUCT_NAME>" that runs this
+//   with --task, hidden, in the user's Windows session (log: main/dist/local-install.log).
+// - When started from Claude Code (CLAUDECODE=1, also inherited by the git hook after its
+//   commits) it doesn't install itself: the Claude desktop app runs commands isolated, and
+//   their writes to %LOCALAPPDATA% and HKCU are invisible to Windows. It starts that task
+//   instead (once a normal install or update has registered it).
+//   --force installs anyway, e.g. for the Claude Code CLI in a normal terminal.
 // - Doesn't start the installed app while `npm run dev` is running (they would overlap).
 // - Installs the post-commit hook that reruns this after every commit on BRANCH.
 // - Adds an "Update <PRODUCT_NAME>" Start menu shortcut (runs update-app.cmd):
@@ -43,6 +47,7 @@ const UNPACKED_DIR = path.join(MAIN_DIR, 'dist', 'win-unpacked')
 const LOCK_FILE = path.join(MAIN_DIR, 'dist', 'local-install.lock')
 const UPDATE_CMD = path.join(REPO_DIR, 'update-app.cmd')
 const UPDATE_SHORTCUT = path.join(START_MENU, `Update ${PRODUCT_NAME}.lnk`)
+const AUTO_TASK = `Auto-update ${PRODUCT_NAME}`
 
 const log = (/** @type {string} */ msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`)
 
@@ -89,8 +94,7 @@ export function startInstalled () {
 
 function registerStartup () {
   child_process.execFileSync('reg', ['add', RUN_KEY, '/v', PRODUCT_NAME, '/t', 'REG_SZ', '/d', `"${INSTALLED_EXE}"`, '/f'], { stdio: 'ignore' })
-  // Windows skips Run entries that have no record here (seen on Windows 11 build 26300).
-  // 02 = enabled, 03 = disabled in Task Manager > Startup apps: keep the user's choice.
+  // Task Manager > Startup apps state: 02 = enabled, 03 = disabled. Keep the user's choice.
   let approved = true
   try {
     child_process.execFileSync('reg', ['query', STARTUP_APPROVED_KEY, '/v', PRODUCT_NAME], { stdio: 'ignore' })
@@ -136,6 +140,28 @@ function createShortcut (/** @type {string} */ file, /** @type {string} */ targe
 function installShortcuts () {
   createShortcut(APP_SHORTCUT, INSTALLED_EXE, INSTALL_DIR, PRODUCT_NAME)
   createShortcut(UPDATE_SHORTCUT, UPDATE_CMD, REPO_DIR, `Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`)
+}
+
+/** On-demand task that installs in the user's session, hidden (conhost --headless), logging to main/dist/local-install.log. */
+function registerAutoUpdateTask () {
+  const q = psQuote
+  // conhost re-splits its arguments and breaks nested quotes: keep it to one plain path
+  const wrapper = path.join(MAIN_DIR, 'build', 'auto-update.cmd')
+  powershell([
+    `$a = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument ${q(`--headless cmd.exe /c "${wrapper}"`)} -WorkingDirectory ${q(REPO_DIR)}`,
+    '$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1)',
+    `Register-ScheduledTask -TaskName ${q(AUTO_TASK)} -Action $a -Settings $s -Description ${q(`Rebuilds and reinstalls ${PRODUCT_NAME} after commits made from Claude Code`)} -Force | Out-Null`
+  ].join('; '))
+}
+
+/** Starts the auto-update task; false if it isn't registered yet. */
+function startAutoUpdateTask () {
+  try {
+    child_process.execFileSync('schtasks', ['/run', '/tn', AUTO_TASK], { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Removes the official app (or this fork installed under its name): process, files, autostart, shortcuts. */
@@ -255,6 +281,7 @@ async function buildAndInstall () {
   fs.cpSync(UNPACKED_DIR, INSTALL_DIR, { recursive: true, force: true })
   registerStartup()
   installShortcuts()
+  registerAutoUpdateTask()
 
   if (devRunning) {
     log('Dev build is running, not starting the installed app (it starts again when dev stops)')
@@ -268,8 +295,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.error('local-install only supports Windows')
     process.exit(1)
   }
+  const head = () => child_process.execSync('git rev-parse --short HEAD', { cwd: REPO_DIR, encoding: 'utf-8' }).trim()
   if (process.argv.includes('--hook')) {
-    log(`post-commit ${child_process.execSync('git rev-parse --short HEAD', { cwd: REPO_DIR, encoding: 'utf-8' }).trim()}`)
+    log(`post-commit ${head()}`)
+  } else if (process.argv.includes('--task')) {
+    log(`${AUTO_TASK}: ${head()}`)
   } else {
     installHook()
   }
@@ -279,8 +309,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // exist for Windows (no Start menu target, no start with Windows).
   const fromClaude = process.env.CLAUDECODE === '1' && !process.argv.includes('--force')
   if (fromClaude) {
-    log(`Started from Claude Code, not installing: its installs aren't visible to Windows.
-  Run "Update ${PRODUCT_NAME}" from the Start menu (or update-app.cmd) instead.`)
+    if (startAutoUpdateTask()) {
+      log(`Started from Claude Code: installing via the "${AUTO_TASK}" task, in your Windows session`)
+    } else {
+      log(`Started from Claude Code, not installing: its installs aren't visible to Windows.
+  Run "Update ${PRODUCT_NAME}" from the Start menu once; after that commits install automatically.`)
+    }
   }
 
   if (!fromClaude && acquireLock()) {
