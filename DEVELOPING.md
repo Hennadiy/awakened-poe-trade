@@ -50,6 +50,11 @@ To update, run **Update Awakened POE Trade f. Dio** from the Start menu (or doub
 from GitHub (fast-forward only), runs `npm ci` where `package-lock.json` changed, then
 rebuilds, reinstalls and restarts the app. With nothing new to pull it just reinstalls.
 
+Installing from a Claude Code session in the Claude desktop app doesn't work: its
+commands run isolated, so files and registry entries they write outside the repo are
+invisible to Windows. The script (and the post-commit hook after Claude's commits) skips
+the install there; use the Update shortcut instead (`--force` overrides the check).
+
 `npm run dev` in `main` closes the installed app first (they share hotkeys, config and
 the single-instance lock) and starts it again when dev is stopped with Ctrl-C.
 A reinstall that happens while dev is running doesn't start the installed app.

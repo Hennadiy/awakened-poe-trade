@@ -9,6 +9,9 @@
 //   Settings stay in %APPDATA%\awakened-poe-trade, shared with the official app.
 // - Uninstalls the official "Awakened PoE Trade" (it would start with Windows too).
 // - Adds a "start with Windows" entry (HKCU\...\Run).
+// - Does nothing when started from Claude Code (CLAUDECODE=1, also inherited by the git
+//   hook after its commits): its file/registry writes outside the repo are isolated.
+//   --force overrides that, e.g. for the Claude Code CLI in a normal terminal.
 // - Doesn't start the installed app while `npm run dev` is running (they would overlap).
 // - Installs the post-commit hook that reruns this after every commit on BRANCH.
 // - Adds an "Update <PRODUCT_NAME>" Start menu shortcut (runs update-app.cmd):
@@ -233,7 +236,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     installHook()
   }
 
-  if (acquireLock()) {
+  // The Claude desktop app runs commands in an isolated environment: what they write to
+  // %LOCALAPPDATA% and HKCU is only visible inside it, so an install from there doesn't
+  // exist for Windows (no Start menu target, no start with Windows).
+  const fromClaude = process.env.CLAUDECODE === '1' && !process.argv.includes('--force')
+  if (fromClaude) {
+    log(`Started from Claude Code, not installing: its installs aren't visible to Windows.
+  Run "Update ${PRODUCT_NAME}" from the Start menu (or update-app.cmd) instead.`)
+  }
+
+  if (!fromClaude && acquireLock()) {
     try {
       if (process.argv.includes('--update')) pull()
       do {
