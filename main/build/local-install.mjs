@@ -19,6 +19,7 @@
 // Log of hook runs: main/dist/local-install.log
 
 import child_process from 'child_process'
+import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -188,6 +189,42 @@ function pull () {
   }
 }
 
+const WIN_CODE_SIGN = {
+  name: 'winCodeSign-2.6.0',
+  url: 'https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z',
+  sha512: '6LQI2d9BPC3Xs0ZoTQe1o3tPiA28c7+PY69Q9i/pD8lY45psMtHuLwv3vRckiVr3Zx1cbNyLlBR8STwCdcHwtA=='
+}
+
+/**
+ * electron-builder sets the exe's icon and version with rcedit from winCodeSign-2.6.0.7z.
+ * That archive also holds macOS symlinks, and unpacking it fails without admin rights or
+ * Developer Mode ("A required privilege is not held by the client"). Unpack it ourselves
+ * without the macOS part, where electron-builder looks for it.
+ */
+export async function ensureWinCodeSign () {
+  const cacheDir = path.join(process.env.ELECTRON_BUILDER_CACHE || path.join(process.env.LOCALAPPDATA ?? '', 'electron-builder', 'Cache'), 'winCodeSign')
+  const target = path.join(cacheDir, WIN_CODE_SIGN.name)
+  if (fs.existsSync(path.join(target, 'rcedit-x64.exe'))) return
+
+  log(`Preparing ${WIN_CODE_SIGN.name} for electron-builder`)
+  fs.mkdirSync(cacheDir, { recursive: true })
+  const archive = path.join(cacheDir, `${WIN_CODE_SIGN.name}.7z`)
+  const sha512 = (/** @type {Buffer} */ data) => crypto.createHash('sha512').update(data).digest('base64')
+  if (!fs.existsSync(archive) || sha512(fs.readFileSync(archive)) !== WIN_CODE_SIGN.sha512) {
+    const res = await fetch(WIN_CODE_SIGN.url)
+    if (!res.ok) throw new Error(`Downloading ${WIN_CODE_SIGN.url}: HTTP ${res.status}`)
+    const data = Buffer.from(await res.arrayBuffer())
+    if (sha512(data) !== WIN_CODE_SIGN.sha512) throw new Error(`${WIN_CODE_SIGN.name}.7z: checksum mismatch`)
+    fs.writeFileSync(archive, data)
+  }
+  const tmp = `${target}.tmp`
+  fs.rmSync(tmp, { recursive: true, force: true })
+  const sevenZip = path.join(MAIN_DIR, 'node_modules', '7zip-bin', 'win', 'x64', '7za.exe')
+  child_process.execFileSync(sevenZip, ['x', '-bd', '-y', `-o${tmp}`, archive, '-xr!darwin'], { stdio: 'ignore' })
+  fs.rmSync(target, { recursive: true, force: true })
+  fs.renameSync(tmp, target)
+}
+
 /** One build+install at a time; a commit during a build triggers one more run afterwards. */
 function acquireLock () {
   fs.mkdirSync(path.dirname(LOCK_FILE), { recursive: true })
@@ -205,9 +242,10 @@ function acquireLock () {
   return true
 }
 
-function buildAndInstall () {
+async function buildAndInstall () {
   run('npm run build', RENDERER_DIR)
   run('npm run build', MAIN_DIR)
+  await ensureWinCodeSign()
   run('npx electron-builder build --win --dir --publish never', MAIN_DIR)
 
   const devRunning = isDevRunning()
@@ -250,7 +288,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       if (process.argv.includes('--update')) pull()
       do {
         fs.writeFileSync(LOCK_FILE, String(process.pid))
-        buildAndInstall()
+        await buildAndInstall()
       } while (fs.readFileSync(LOCK_FILE, 'utf-8').includes('rerun'))
       log('Done')
     } catch (e) {
