@@ -90,7 +90,8 @@ It appends bulk-exchange items (currency, fragments, cards), base types of the
 item groups listed in `BASE_GROUPS` and unique items (except unique maps) to
 `public/data/en/items.ndjson`. In `public/data/en/stats.ndjson` it adds the trade
 site's wording of reworded modifiers (e.g. "+#% to Item Rarity"), keeping the old
-wording, and adds modifiers the app has no stat for (new uniques, league mods).
+wording, adds trade ids for modifier types a known stat can now be (e.g. implicit on
+Viscera), and adds modifiers the app has no stat for (new uniques, league mods).
 New uniques get no icon. A brand new
 item group (like Viscera) also needs an `ItemCategory` and a trade category mapping,
 see `src/parser/meta.ts` and `src/web/price-check/trade/pathofexile-trade.ts`.

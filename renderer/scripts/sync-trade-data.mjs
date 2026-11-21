@@ -282,9 +282,36 @@ for (const group of statsData.result) {
   }
 }
 
-// 4. new modifiers: trade stats with an id that no local stat has
 /** trade id without its "explicit." prefix, the same for every modifier type */
 const baseId = (/** @type {string} */ id) => id.slice(id.indexOf('.') + 1)
+
+// 3b. known modifiers that can now also be another type (e.g. an explicit stat that is an
+// implicit on Viscera): the parser rejects a match whose type has no trade id
+/** @type {Map<string, Array<{ stat: any, line: number }>>} */
+const statsByBaseId = new Map()
+for (const [id, list] of statsByTradeId) {
+  const all = statsByBaseId.get(baseId(id)) ?? []
+  for (const s of list) if (!all.some(a => a.stat === s.stat)) all.push(s)
+  statsByBaseId.set(baseId(id), all)
+}
+for (const group of statsData.result) {
+  for (const entry of group.entries) {
+    const type = entry.id.slice(0, entry.id.indexOf('.'))
+    if (!NEW_STAT_TYPES.has(type) || entry.option || statsByTradeId.has(entry.id)) continue
+    const matcher = entry.text.replace(/ \([^)]*\)$/, '').replace(/[+-]#/g, '#')
+    // the same trade stat, with the same wording: no doubt which local stat it is
+    const targets = (statsByBaseId.get(baseId(entry.id)) ?? []).filter(({ stat }) =>
+      !stat.trade.ids[type] &&
+      stat.matchers.some((/** @type {any} */ m) => m.string === matcher || m.advanced === matcher))
+    if (targets.length !== 1) continue
+    const { stat, line } = targets[0]
+    stat.trade.ids[type] = [entry.id]
+    changedLines.add(line)
+    statReport.push(`${JSON.stringify(stat.ref)} +${type}`)
+  }
+}
+
+// 4. new modifiers: trade stats with an id that no local stat has
 const knownBaseIds = new Set([...statsByTradeId.keys()].map(baseId))
 /** @type {Map<string, { texts: string[], ids: Record<string, string[]> }>} */
 const newStats = new Map()
