@@ -15,6 +15,8 @@ import { filterTimelessJewelKeystones } from './pseudo/timeless-jewel'
 import { decodeOils, applyAnointmentRules } from './pseudo/anointments'
 import { StatBetter } from '@/assets/data'
 
+const JEWELS = new Set([ItemCategory.Jewel, ItemCategory.AbyssJewel, ItemCategory.ClusterJewel])
+
 export interface FiltersCreationContext {
   readonly item: ParsedItem
   readonly searchInRange: number
@@ -148,7 +150,10 @@ export function initUiModFilters (
     item,
     filters: [],
     groups: [],
-    searchInRange: (item.rarity === ItemRarity.Normal) ? 100 : opts.searchStatRange,
+    searchInRange: (item.rarity === ItemRarity.Normal)
+      ? 100
+      // jewels: search from the exact rolls, not lowered by the "stat range" setting
+      : (JEWELS.has(item.category!)) ? 0 : opts.searchStatRange,
     statsByType: item.statsByType.map(calc => {
       if (calc.type === ModifierType.Fractured && calc.stat.trade.ids[ModifierType.Explicit]) {
         return { ...calc, type: ModifierType.Explicit }
