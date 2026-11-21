@@ -15,7 +15,8 @@ import { filterTimelessJewelKeystones } from './pseudo/timeless-jewel'
 import { decodeOils, applyAnointmentRules } from './pseudo/anointments'
 import { StatBetter } from '@/assets/data'
 
-const JEWELS = new Set([ItemCategory.Jewel, ItemCategory.AbyssJewel, ItemCategory.ClusterJewel])
+/** search similar items from the exact rolls, not lowered by the "stat range" setting */
+const EXACT_ROLL_CATEGORIES = new Set([ItemCategory.Jewel, ItemCategory.AbyssJewel, ItemCategory.ClusterJewel, ItemCategory.Viscera])
 
 export interface FiltersCreationContext {
   readonly item: ParsedItem
@@ -66,9 +67,11 @@ export function createExactStatFilters (
 
   const ctx: FiltersCreationContext = {
     item,
-    searchInRange: (opts.mode !== 'props')
-      ? Math.min(2, opts.searchStatRange)
-      : opts.searchStatRange,
+    searchInRange: (EXACT_ROLL_CATEGORIES.has(item.category!))
+      ? 0
+      : (opts.mode !== 'props')
+          ? Math.min(2, opts.searchStatRange)
+          : opts.searchStatRange,
     filters: [],
     groups: [],
     statsByType: statsByType.filter(calc => keepByType.includes(calc.type))
@@ -152,8 +155,7 @@ export function initUiModFilters (
     groups: [],
     searchInRange: (item.rarity === ItemRarity.Normal)
       ? 100
-      // jewels: search from the exact rolls, not lowered by the "stat range" setting
-      : (JEWELS.has(item.category!)) ? 0 : opts.searchStatRange,
+      : (EXACT_ROLL_CATEGORIES.has(item.category!)) ? 0 : opts.searchStatRange,
     statsByType: item.statsByType.map(calc => {
       if (calc.type === ModifierType.Fractured && calc.stat.trade.ids[ModifierType.Explicit]) {
         return { ...calc, type: ModifierType.Explicit }
