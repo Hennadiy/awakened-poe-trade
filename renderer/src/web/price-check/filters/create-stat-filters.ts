@@ -545,6 +545,16 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
       enableAllFilters(ctx.filters)
     }
   }
+
+  // only one modifier: it's what the item is worth, search for it by default
+  if (item.newMods.length === 1) {
+    const [mod] = item.newMods
+    for (const filter of ctx.filters) {
+      if (!filter.hidden && filter.sources.some(source => source.modifier === mod)) {
+        filter.disabled = false
+      }
+    }
+  }
 }
 
 function applyClusterJewelRules (filters: StatFilter[], exact: boolean) {

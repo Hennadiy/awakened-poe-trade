@@ -18,8 +18,9 @@
 //   --force installs anyway, e.g. for the Claude Code CLI in a normal terminal.
 // - Doesn't start the installed app while `npm run dev` is running (they would overlap).
 // - Installs the post-commit hook that reruns this after every commit on BRANCH.
-// - Adds an "Update <PRODUCT_NAME>" Start menu shortcut (runs update-app.cmd):
-//   pulls BRANCH from origin, reinstalls npm packages if they changed, then builds and installs.
+// - Adds an "Update <PRODUCT_NAME>" Start menu shortcut, hidden (auto-update.cmd --update;
+//   update-app.cmd is the same with a console): pulls BRANCH from origin, reinstalls npm
+//   packages if they changed, then builds and installs. Hidden runs show a message on failure.
 // Log of hook runs: main/dist/local-install.log
 
 import child_process from 'child_process'
@@ -45,7 +46,8 @@ const REPO_DIR = path.resolve(MAIN_DIR, '..')
 const RENDERER_DIR = path.join(REPO_DIR, 'renderer')
 const UNPACKED_DIR = path.join(MAIN_DIR, 'dist', 'win-unpacked')
 const LOCK_FILE = path.join(MAIN_DIR, 'dist', 'local-install.lock')
-const UPDATE_CMD = path.join(REPO_DIR, 'update-app.cmd')
+// conhost --headless re-splits its arguments and breaks nested quotes: this path must not need any
+const AUTO_UPDATE_CMD = path.join(MAIN_DIR, 'build', 'auto-update.cmd')
 const UPDATE_SHORTCUT = path.join(START_MENU, `Update ${PRODUCT_NAME}.lnk`)
 const AUTO_TASK = `Auto-update ${PRODUCT_NAME}`
 
@@ -125,11 +127,12 @@ function installHook () {
 
 const psQuote = (/** @type {string} */ s) => `'${s.replace(/'/g, "''")}'`
 
-function createShortcut (/** @type {string} */ file, /** @type {string} */ target, /** @type {string} */ workDir, /** @type {string} */ description) {
+function createShortcut (/** @type {string} */ file, /** @type {string} */ target, /** @type {string} */ workDir, /** @type {string} */ description, args = '') {
   const q = psQuote
   powershell([
     `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(file)})`,
     `$s.TargetPath = ${q(target)}`,
+    `$s.Arguments = ${q(args)}`,
     `$s.WorkingDirectory = ${q(workDir)}`,
     `$s.IconLocation = ${q(INSTALLED_EXE + ',0')}`,
     `$s.Description = ${q(description)}`,
@@ -139,16 +142,24 @@ function createShortcut (/** @type {string} */ file, /** @type {string} */ targe
 
 function installShortcuts () {
   createShortcut(APP_SHORTCUT, INSTALLED_EXE, INSTALL_DIR, PRODUCT_NAME)
-  createShortcut(UPDATE_SHORTCUT, UPDATE_CMD, REPO_DIR, `Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`)
+  // runs hidden; update-app.cmd is the same with a visible console
+  createShortcut(UPDATE_SHORTCUT, 'conhost.exe', REPO_DIR, `Pull the latest ${BRANCH} and reinstall ${PRODUCT_NAME}`,
+    `--headless cmd.exe /c "${AUTO_UPDATE_CMD}" --update`)
+}
+
+/** For runs without a console (--task): tell the user that it failed. */
+function showFailure (/** @type {string} */ message) {
+  const text = `${PRODUCT_NAME} update failed:\n\n${message}\n\nLog: ${path.join(MAIN_DIR, 'dist', 'local-install.log')}`
+  child_process.spawnSync('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+    `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${psQuote(text)}, ${psQuote(PRODUCT_NAME)}, 'OK', 'Error') | Out-Null`
+  ], { stdio: 'ignore', windowsHide: true })
 }
 
 /** On-demand task that installs in the user's session, hidden (conhost --headless), logging to main/dist/local-install.log. */
 function registerAutoUpdateTask () {
   const q = psQuote
-  // conhost re-splits its arguments and breaks nested quotes: keep it to one plain path
-  const wrapper = path.join(MAIN_DIR, 'build', 'auto-update.cmd')
   powershell([
-    `$a = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument ${q(`--headless cmd.exe /c "${wrapper}"`)} -WorkingDirectory ${q(REPO_DIR)}`,
+    `$a = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument ${q(`--headless cmd.exe /c "${AUTO_UPDATE_CMD}"`)} -WorkingDirectory ${q(REPO_DIR)}`,
     '$s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1)',
     `Register-ScheduledTask -TaskName ${q(AUTO_TASK)} -Action $a -Settings $s -Description ${q(`Rebuilds and reinstalls ${PRODUCT_NAME} after commits made from Claude Code`)} -Force | Out-Null`
   ].join('; '))
@@ -326,8 +337,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       } while (fs.readFileSync(LOCK_FILE, 'utf-8').includes('rerun'))
       log('Done')
     } catch (e) {
-      log(`FAILED: ${e instanceof Error ? e.message : e}`)
+      const message = e instanceof Error ? e.message : String(e)
+      log(`FAILED: ${message}`)
       process.exitCode = 1
+      if (process.argv.includes('--task')) showFailure(message.split('\n')[0])
     } finally {
       fs.rmSync(LOCK_FILE, { force: true })
     }
