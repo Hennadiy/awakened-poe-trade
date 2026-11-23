@@ -114,7 +114,15 @@ export function createPresets (
       item.itemLevel! >= 82)
   )
 
-  if (likelyFinishedItem || !hasCraftingValue) {
+  // a fractured mod is mostly worth something as a crafting base: open that tab first
+  const fracturedBase = (
+    item.isFractured &&
+    item.rarity !== ItemRarity.Unique &&
+    !item.isCorrupted &&
+    !item.isMirrored
+  )
+
+  if ((likelyFinishedItem || !hasCraftingValue) && !fracturedBase) {
     return { active: pseudoPreset.id, presets: [pseudoPreset] }
   }
 
@@ -125,7 +133,7 @@ export function createPresets (
   }
 
   return {
-    active: pseudoPreset.id,
+    active: fracturedBase ? baseItemPreset.id : pseudoPreset.id,
     presets: [pseudoPreset, baseItemPreset]
   }
 }
