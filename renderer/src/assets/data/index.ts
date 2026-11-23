@@ -3,6 +3,20 @@ import type { BaseType, DropEntry, Stat, StatOrGroup, StatMatcher, TranslationDi
 
 export * from './interfaces'
 
+/**
+ * The game now copies the advanced description of some ranges as "(...)": "Summoned Golems(...)"
+ * where the data has "Summoned Golems (Animated Weapons-Holy Armaments)". Keep the regex in
+ * sync with make-index-files.mjs, which indexes this form too.
+ */
+export function advancedAsCopied (advanced: string): string {
+  return advanced.replace(/ ?\([^()#]*-[^()#]*\)/g, '(...)')
+}
+
+export function matcherIs (m: StatMatcher, matchStr: string): boolean {
+  return m.string === matchStr || m.advanced === matchStr ||
+    (m.advanced != null && advancedAsCopied(m.advanced) === matchStr)
+}
+
 export let ITEM_DROP: DropEntry[]
 export let CLIENT_STRINGS: TranslationDict
 export let CLIENT_STRINGS_REF: TranslationDict
@@ -128,7 +142,7 @@ async function loadStats (language: string) {
     const statOrGroup = JSON.parse(ndjson.slice(start, end)) as StatOrGroup
     const stats = ('stats' in statOrGroup) ? statOrGroup.stats : [statOrGroup]
     if (!stats.some(stat =>
-      stat.matchers.some(m => m.string === matchStr || m.advanced === matchStr))
+      stat.matchers.some(m => matcherIs(m, matchStr)))
     ) {
       // console.log('fnv1a32 collision')
       return undefined
@@ -143,14 +157,14 @@ async function loadStats (language: string) {
     let stat: Stat
     if ('stats' in statOrGroup) {
       const stats = statOrGroup.stats.filter(stat =>
-        stat.matchers.some(m => m.string === matchStr || m.advanced === matchStr))
+        stat.matchers.some(m => matcherIs(m, matchStr)))
       if (stats.length !== 1) return undefined
       stat = stats[0]
     } else {
       stat = statOrGroup
     }
     const matcher = stat.matchers.find(m =>
-      m.string === matchStr || m.advanced === matchStr)!
+      matcherIs(m, matchStr))!
     return { stat, matcher }
   }
 

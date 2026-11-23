@@ -1,4 +1,4 @@
-import { CLIENT_STRINGS as _$, STAT_BY_MATCH_STR_V2 } from '@/assets/data'
+import { CLIENT_STRINGS as _$, STAT_BY_MATCH_STR_V2, matcherIs } from '@/assets/data'
 import type { StatMatcher, Stat, StatGroup } from '@/assets/data'
 import type { ModifierType } from './modifiers'
 import { type ItemCategory, ARMOUR, WEAPON, HEIST_EQUIPMENT } from './meta'
@@ -252,7 +252,7 @@ function findAndResolveTranslation (
 
   if (stat) {
     const matcher = stat.matchers.find(m =>
-      m.string === matchStr || m.advanced === matchStr)
+      matcherIs(m, matchStr))
     if (!matcher) return undefined
     return { stat, matcher }
   }
@@ -280,7 +280,7 @@ export function _resolveTranslation (
   if (resolve.strat === 'trivial-merge') {
     const withMatchStr = (matchStr.length)
       ? onTradeStats.filter(stat =>
-          stat.matchers.some(m => m.string === matchStr || m.advanced === matchStr))
+          stat.matchers.some(m => matcherIs(m, matchStr)))
       : onTradeStats
     if (!withMatchStr.length) return undefined
     const merged = withMatchStr[0]
@@ -292,7 +292,7 @@ export function _resolveTranslation (
   } else if (resolve.strat === 'percent-merge') {
     const pctStat = stats[resolve.kind.indexOf('percent')]
     const matcher = pctStat.matchers.find(m =>
-      m.string === matchStr || m.advanced === matchStr)
+      matcherIs(m, matchStr))
     const roll100 = (matcher !== undefined && matcher.value === 100)
     if (roll100) {
       const otherStat = stats[resolve.kind.indexOf('value')]
@@ -301,7 +301,7 @@ export function _resolveTranslation (
       return pctStat
     }
     return stats.find(stat =>
-      stat.matchers.some(m => m.string === matchStr || m.advanced === matchStr))
+      stat.matchers.some(m => matcherIs(m, matchStr)))
   } else if (resolve.strat === 'flag-merge') {
     if (roll === undefined) return undefined
     const valStat = stats[resolve.kind.indexOf('value')]

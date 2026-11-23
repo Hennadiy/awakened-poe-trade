@@ -31,6 +31,12 @@ export function makeIndexFiles () {
           for (const matcher of stat.matchers) {
             if (matcher.advanced) {
               lineStarts.matchers.push({ start, hash: Number(fnv1a(matcher.advanced, { size: 32 })) })
+              // the game now copies ranges like "(Animated Weapons-Holy Armaments)" as "(...)",
+              // see advancedAsCopied() in data/index.ts
+              const asCopied = matcher.advanced.replace(/ ?\([^()#]*-[^()#]*\)/g, '(...)')
+              if (asCopied !== matcher.advanced) {
+                lineStarts.matchers.push({ start, hash: Number(fnv1a(asCopied, { size: 32 })) })
+              }
             } else {
               lineStarts.matchers.push({ start, hash: Number(fnv1a(matcher.string, { size: 32 })) })
             }
