@@ -143,6 +143,7 @@ export default defineComponent({
           (item.category === ItemCategory.Charm) ||
           (item.category === ItemCategory.Idol) ||
           (item.category === ItemCategory.Viscera) ||
+          (item.info.refName === 'Viscera') ||
           (!CATEGORY_TO_TRADE_ID.has(item.category!) &&
             item.info.refName !== 'Mercenary Warrant') ||
           (item.isUnidentified) ||
