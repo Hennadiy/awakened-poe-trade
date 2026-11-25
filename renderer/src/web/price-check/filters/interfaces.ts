@@ -63,6 +63,7 @@ export interface ItemFilters {
   quality?: FilterNumeric
   gemLevel?: FilterNumeric
   mapTier?: FilterNumeric
+  unidentifiedTier?: FilterNumeric
   mapBlighted?: {
     value: 'Blighted' | 'Blight-ravaged' | false
   }

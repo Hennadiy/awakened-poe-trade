@@ -31,6 +31,8 @@
         :filter="filters.rarity" text="Magic" />
       <filter-btn-logical v-if="filters.unidentified"
         :filter="filters.unidentified" :text="t('item.unidentified')" />
+      <filter-btn-numeric v-if="filters.unidentifiedTier"
+        :filter="filters.unidentifiedTier" :name="t('item.unidentified_tier')" />
       <filter-btn-logical v-if="filters.veiled"
         :filter="filters.veiled" :text="t('item.veiled')" />
       <filter-btn-logical v-if="filters.foil"

@@ -122,6 +122,7 @@
     "mod_crafted": "Мастерский",
     "mod_scourge": "Преображённое",
     "unidentified": "Неопознанный",
+    "unidentified_tier": "Тир неопознанного: {0}",
     "veiled": "Завуалирован",
     "foil_unique": "Реликвия",
     "mirrored": "Отражено",

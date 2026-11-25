@@ -421,6 +421,13 @@ export function createFilters (
       value: true,
       disabled: (item.rarity !== ItemRarity.Unique)
     }
+    if (item.unidentifiedTier) {
+      // only unidentified items have it: on together with the "Unidentified" filter
+      filters.unidentifiedTier = {
+        value: item.unidentifiedTier,
+        disabled: filters.unidentified.disabled
+      }
+    }
   }
 
   if (item.isVeiled) {

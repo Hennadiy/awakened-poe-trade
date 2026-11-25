@@ -135,6 +135,7 @@ interface TradeRequest {
           mirrored?: FilterBoolean
           split?: FilterBoolean
           identified?: FilterBoolean
+          unidentified_tier?: FilterRange
           stack_size?: FilterRange
           memory_level?: FilterRange
           foulborn_item?: FilterBoolean
@@ -399,6 +400,10 @@ export function createTradeRequest (filters: ItemFilters, stats: FilterOrGroup[]
     propSet(query.filters, 'map_filters.filters.map_completion_reward.option', filters.mapCompletionReward.nameTrade)
   }
 
+  if (filters.unidentifiedTier && !filters.unidentifiedTier.disabled) {
+    propSet(query.filters, 'misc_filters.filters.unidentified_tier.min', filters.unidentifiedTier.value)
+    propSet(query.filters, 'misc_filters.filters.unidentified_tier.max', filters.unidentifiedTier.value)
+  }
   if (filters.unidentified && !filters.unidentified.disabled) {
     propSet(query.filters, 'misc_filters.filters.identified.option', String(false))
   }

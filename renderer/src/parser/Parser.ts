@@ -484,8 +484,12 @@ function parseFoil (section: string[], item: ParsedItem) {
 }
 
 function parseUnidentified (section: string[], item: ParsedItem) {
-  if (section[0] === _$.UNIDENTIFIED) {
+  const line = section[0]
+  // also "Unidentified (Tier 3)"
+  if (line === _$.UNIDENTIFIED || (line.startsWith(`${_$.UNIDENTIFIED} (`) && line.endsWith(')'))) {
     item.isUnidentified = true
+    const tier = /(\d+)\)$/.exec(line)
+    if (tier) item.unidentifiedTier = Number(tier[1])
     return 'SECTION_PARSED'
   }
   return 'SECTION_SKIPPED'
