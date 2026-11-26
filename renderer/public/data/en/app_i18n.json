@@ -269,6 +269,12 @@
     "always_show": "Show button for active widgets",
     "price_check": "Price check (Ctrl + V)"
   },
+  "hold_shift": {
+    "name": "Hold Shift",
+    "hotkey": "Hold Shift in the game (on / off)",
+    "held": "SHIFT",
+    "release": "Shift is held in the game. Click to let go"
+  },
   "stopwatch": {
     "name": "Stopwatch",
     "paused": "paused",

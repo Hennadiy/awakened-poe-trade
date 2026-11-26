@@ -33,6 +33,8 @@ export interface ShortcutAction {
     text: string
     send: boolean
   } | {
+    type: 'toggle-hold-shift'
+  } | {
     type: 'test-only'
   }
 }
@@ -174,6 +176,9 @@ type IpcUserAction =
   } | {
     action: 'stash-search'
     text: string
+  } | {
+    action: 'hold-shift'
+    held: boolean
   }>
 
 interface Event<TName extends string, TPayload = undefined> {

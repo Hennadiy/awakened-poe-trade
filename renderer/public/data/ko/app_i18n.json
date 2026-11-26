@@ -245,6 +245,12 @@
     "always_show": "활성화된 위젯 표시하기",
     "price_check": "가격 검색 (Ctrl + V)"
   },
+  "hold_shift": {
+    "name": "Shift 고정",
+    "hotkey": "게임에서 Shift 고정 (켜기 / 끄기)",
+    "held": "SHIFT",
+    "release": "게임에서 Shift가 눌려 있습니다. 클릭하여 해제"
+  },
   "stopwatch": {
     "name": "스톱워치",
     "paused": "일시정지",

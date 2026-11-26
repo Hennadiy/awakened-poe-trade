@@ -7,6 +7,7 @@ import PriceCheckWindow from '@/web/price-check/PriceCheckWindow.vue'
 import WidgetItemCheck from '@/web/item-check/WidgetItemCheck.vue'
 import WidgetImageStrip from './WidgetImageStrip.vue'
 import WidgetDelveGrid from './WidgetDelveGrid.vue'
+import WidgetHoldShift from './WidgetHoldShift.vue'
 import WidgetItemSearch from '../item-search/WidgetItemSearch.vue'
 import WidgetSettings from '../settings/SettingsWindow.vue'
 
@@ -31,3 +32,4 @@ registry.widgets.push(PriceCheckWindow as unknown as WidgetComponent)
 registry.widgets.push(WidgetItemCheck as unknown as WidgetComponent)
 registry.widgets.push(WidgetImageStrip as unknown as WidgetComponent)
 registry.widgets.push(WidgetDelveGrid as unknown as WidgetComponent)
+registry.widgets.push(WidgetHoldShift as unknown as WidgetComponent)

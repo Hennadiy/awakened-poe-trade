@@ -4,6 +4,7 @@ import { isModKey, KeyToElectron, mergeTwoHotkeys } from '../../../ipc/KeyToCode
 import { typeInChat, stashSearch } from './text-box'
 import { WidgetAreaTracker } from '../windowing/WidgetAreaTracker'
 import { HostClipboard } from './HostClipboard'
+import { ShiftHold } from './ShiftHold'
 import { OcrWorker } from '../vision/link-main'
 import type { ShortcutAction } from '../../../ipc/types'
 import type { Logger } from '../RemoteLogger'
@@ -21,6 +22,7 @@ export class Shortcuts {
   private logKeys = false
   private areaTracker: WidgetAreaTracker
   private clipboard: HostClipboard
+  private shiftHold: ShiftHold
 
   static async create (
     logger: Logger,
@@ -44,6 +46,15 @@ export class Shortcuts {
   ) {
     this.areaTracker = new WidgetAreaTracker(server, overlay)
     this.clipboard = new HostClipboard(logger)
+    this.shiftHold = new ShiftHold(poeWindow, server)
+    this.shiftHold.onChange(() => {
+      // hotkeys are registered differently while Shift is held
+      setImmediate(() => {
+        if (!this.poeWindow.isActive) return
+        this.unregister()
+        this.register()
+      })
+    })
 
     this.poeWindow.on('active-change', (isActive) => {
       process.nextTick(() => {
@@ -127,83 +138,105 @@ export class Shortcuts {
       action.action.type === 'toggle-overlay')
   }
 
+  // While Shift is held, the game sees every hotkey with Shift added:
+  // listen for that instead, and skip hotkeys that already need Shift
+  // (e.g. "Shift + Space" would fire on every Space press).
+  private shortcutVariants (entry: ShortcutAction): string[] {
+    const withShift = mergeTwoHotkeys(entry.shortcut, 'Shift')
+    if (entry.action.type === 'toggle-hold-shift') {
+      return Array.from(new Set([entry.shortcut, withShift]))
+    }
+    if (!this.shiftHold.isHeld) return [entry.shortcut]
+    return (withShift === entry.shortcut) ? [] : [withShift]
+  }
+
   private register () {
     for (const entry of this.actions) {
-      const isOk = globalShortcut.register(shortcutToElectron(entry.shortcut), () => {
-        if (this.logKeys) {
-          this.logger.write(`debug [Shortcuts] Action type: ${entry.action.type}`)
-        }
+      for (const shortcut of this.shortcutVariants(entry)) {
+        const isOk = globalShortcut.register(shortcutToElectron(shortcut), () => {
+          if (this.logKeys) {
+            this.logger.write(`debug [Shortcuts] Action type: ${entry.action.type}`)
+          }
 
-        if (entry.keepModKeys) {
-          const nonModKey = entry.shortcut.split(' + ').filter(key => !isModKey(key))[0]
-          uIOhook.keyToggle(UiohookKey[nonModKey as UiohookKeyT], 'up')
-        } else {
-          entry.shortcut.split(' + ').reverse().forEach(key => { uIOhook.keyToggle(UiohookKey[key as UiohookKeyT], 'up') })
-        }
+          if (entry.action.type === 'toggle-hold-shift') {
+            uIOhook.keyToggle(UiohookKey[shortcut.split(' + ').filter(key => !isModKey(key))[0] as UiohookKeyT], 'up')
+            this.shiftHold.toggle()
+            return
+          }
+          // the action may send its own keys, don't mix Shift into them
+          this.shiftHold.pause()
 
-        if (entry.action.type === 'toggle-overlay') {
-          this.areaTracker.removeListeners()
-          this.overlay.toggleActiveState()
-        } else if (entry.action.type === 'paste-in-chat') {
-          typeInChat(entry.action.text, entry.action.send, this.clipboard)
-        } else if (entry.action.type === 'trigger-event') {
-          this.server.sendEventTo('broadcast', {
-            name: 'MAIN->CLIENT::widget-action',
-            payload: { target: entry.action.target }
-          })
-        } else if (entry.action.type === 'stash-search') {
-          stashSearch(entry.action.text, this.clipboard, this.overlay)
-        } else if (entry.action.type === 'copy-item') {
-          const { action } = entry
+          if (entry.keepModKeys) {
+            const nonModKey = entry.shortcut.split(' + ').filter(key => !isModKey(key))[0]
+            uIOhook.keyToggle(UiohookKey[nonModKey as UiohookKeyT], 'up')
+          } else {
+            entry.shortcut.split(' + ').reverse().forEach(key => { uIOhook.keyToggle(UiohookKey[key as UiohookKeyT], 'up') })
+          }
 
-          const pressPosition = screen.getCursorScreenPoint()
-
-          this.clipboard.readItemText()
-            .then(clipboard => {
-              this.areaTracker.removeListeners()
-              this.server.sendEventTo('last-active', {
-                name: 'MAIN->CLIENT::item-text',
-                payload: { target: action.target, clipboard, position: pressPosition, focusOverlay: Boolean(action.focusOverlay) }
-              })
-              if (action.focusOverlay && this.overlay.wasUsedRecently) {
-                this.overlay.assertOverlayActive()
-              }
-            }).catch(() => {})
-
-          pressKeysToCopyItemText(
-            (entry.keepModKeys) ? entry.shortcut.split(' + ').filter(key => isModKey(key)) : undefined,
-            this.gameConfig.showModsKey
-          )
-        } else if (entry.action.type === 'ocr-text' && entry.action.target === 'heist-gems') {
-          if (process.platform !== 'win32') return
-
-          const { action } = entry
-          const pressTime = Date.now()
-          const imageData = this.poeWindow.screenshot()
-          this.ocrWorker.findHeistGems({
-            width: this.poeWindow.bounds.width,
-            height: this.poeWindow.bounds.height,
-            data: imageData
-          }).then(result => {
-            this.server.sendEventTo('last-active', {
-              name: 'MAIN->CLIENT::ocr-text',
-              payload: {
-                target: action.target,
-                pressTime,
-                ocrTime: result.elapsed,
-                paragraphs: result.recognized.map(p => p.text)
-              }
+          if (entry.action.type === 'toggle-overlay') {
+            this.areaTracker.removeListeners()
+            this.overlay.toggleActiveState()
+          } else if (entry.action.type === 'paste-in-chat') {
+            typeInChat(entry.action.text, entry.action.send, this.clipboard)
+          } else if (entry.action.type === 'trigger-event') {
+            this.server.sendEventTo('broadcast', {
+              name: 'MAIN->CLIENT::widget-action',
+              payload: { target: entry.action.target }
             })
-          }).catch(() => {})
+          } else if (entry.action.type === 'stash-search') {
+            stashSearch(entry.action.text, this.clipboard, this.overlay)
+          } else if (entry.action.type === 'copy-item') {
+            const { action } = entry
+
+            const pressPosition = screen.getCursorScreenPoint()
+
+            this.clipboard.readItemText()
+              .then(clipboard => {
+                this.areaTracker.removeListeners()
+                this.server.sendEventTo('last-active', {
+                  name: 'MAIN->CLIENT::item-text',
+                  payload: { target: action.target, clipboard, position: pressPosition, focusOverlay: Boolean(action.focusOverlay) }
+                })
+                if (action.focusOverlay && this.overlay.wasUsedRecently) {
+                  this.overlay.assertOverlayActive()
+                }
+              }).catch(() => {})
+
+            pressKeysToCopyItemText(
+              (entry.keepModKeys) ? entry.shortcut.split(' + ').filter(key => isModKey(key)) : undefined,
+              this.gameConfig.showModsKey
+            )
+          } else if (entry.action.type === 'ocr-text' && entry.action.target === 'heist-gems') {
+            if (process.platform !== 'win32') return
+
+            const { action } = entry
+            const pressTime = Date.now()
+            const imageData = this.poeWindow.screenshot()
+            this.ocrWorker.findHeistGems({
+              width: this.poeWindow.bounds.width,
+              height: this.poeWindow.bounds.height,
+              data: imageData
+            }).then(result => {
+              this.server.sendEventTo('last-active', {
+                name: 'MAIN->CLIENT::ocr-text',
+                payload: {
+                  target: action.target,
+                  pressTime,
+                  ocrTime: result.elapsed,
+                  paragraphs: result.recognized.map(p => p.text)
+                }
+              })
+            }).catch(() => {})
+          }
+        })
+
+        if (!isOk) {
+          this.logger.write(`error [Shortcuts] Failed to register a shortcut "${shortcut}". It is already registered by another application.`)
         }
-      })
 
-      if (!isOk) {
-        this.logger.write(`error [Shortcuts] Failed to register a shortcut "${entry.shortcut}". It is already registered by another application.`)
-      }
-
-      if (entry.action.type === 'test-only') {
-        globalShortcut.unregister(shortcutToElectron(entry.shortcut))
+        if (entry.action.type === 'test-only') {
+          globalShortcut.unregister(shortcutToElectron(shortcut))
+        }
       }
     }
   }

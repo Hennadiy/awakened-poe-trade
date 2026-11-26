@@ -26,7 +26,7 @@ export default {
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { configProp, configModelValue, _configModelValue, findWidget } from './utils'
-import { PriceCheckWidget, DelveGridWidget } from '@/web/overlay/interfaces'
+import { PriceCheckWidget, DelveGridWidget, HoldShiftWidget } from '@/web/overlay/interfaces'
 import { ItemCheckWidget } from '../item-check/widget.js'
 
 import UiRadio from '@/web/ui/UiRadio.vue'
@@ -38,6 +38,7 @@ const hotkeys = computed<HotkeySchema[]>(() => {
   const priceCheckWidget = findWidget<PriceCheckWidget>('price-check', props.config)!
   const itemCheckWidget = findWidget<ItemCheckWidget>('item-check', props.config)!
   const delveGridWidget = findWidget<DelveGridWidget>('delve-grid', props.config)!
+  const holdShiftWidget = findWidget<HoldShiftWidget>('hold-shift', props.config)!
   return [{
     translationKey: 'price_check.name',
     items: [{
@@ -63,6 +64,9 @@ const hotkeys = computed<HotkeySchema[]>(() => {
   }, {
     translationKey: 'settings.delve_grid',
     config: _configModelValue(delveGridWidget, 'toggleKey')
+  }, {
+    translationKey: 'hold_shift.hotkey',
+    config: _configModelValue(holdShiftWidget, 'toggleKey')
   }]
 })
 

@@ -435,6 +435,15 @@ function upgradeConfig (_config: Config): Config {
 
     config.configVersion = 18
   }
+
+  // fork addition, checked by type instead of configVersion
+  // so it doesn't clash with upstream's future config versions
+  if (!config.widgets.some(w => w.wmType === 'hold-shift')) {
+    config.widgets.push({
+      ...defaultConfig().widgets.find(w => w.wmType === 'hold-shift')!,
+      wmId: Math.max(0, ...config.widgets.map(_ => _.wmId)) + 1
+    })
+  }
   /* eslint-enable */
 
   return config as unknown as Config
@@ -499,6 +508,14 @@ function getConfigForHost (): HostConfig {
     actions.push({
       shortcut: delveGrid.toggleKey,
       action: { type: 'trigger-event', target: 'delve-grid' },
+      keepModKeys: true
+    })
+  }
+  const holdShift = AppConfig('hold-shift') as widget.HoldShiftWidget | undefined
+  if (holdShift?.toggleKey) {
+    actions.push({
+      shortcut: holdShift.toggleKey,
+      action: { type: 'toggle-hold-shift' },
       keepModKeys: true
     })
   }
