@@ -136,6 +136,9 @@ export class Shortcuts {
     this.actions = actions.filter(action =>
       !duplicates.has(action.shortcut) ||
       action.action.type === 'toggle-overlay')
+
+    this.shiftHold.setHotkey(
+      this.actions.find(action => action.action.type === 'toggle-hold-shift')?.shortcut ?? null)
   }
 
   // While Shift is held, the game sees every hotkey with Shift added:
@@ -159,8 +162,8 @@ export class Shortcuts {
           }
 
           if (entry.action.type === 'toggle-hold-shift') {
-            uIOhook.keyToggle(UiohookKey[shortcut.split(' + ').filter(key => !isModKey(key))[0] as UiohookKeyT], 'up')
-            this.shiftHold.toggle()
+            // registered only to keep the key from the game,
+            // ShiftHold reacts to it from the keyboard hook (see there why)
             return
           }
           // the action may send its own keys, don't mix Shift into them
