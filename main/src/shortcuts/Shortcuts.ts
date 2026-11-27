@@ -5,6 +5,7 @@ import { typeInChat, stashSearch } from './text-box'
 import { WidgetAreaTracker } from '../windowing/WidgetAreaTracker'
 import { HostClipboard } from './HostClipboard'
 import { ShiftHold } from './ShiftHold'
+import { CraftClick } from './CraftClick'
 import { OcrWorker } from '../vision/link-main'
 import type { ShortcutAction } from '../../../ipc/types'
 import type { Logger } from '../RemoteLogger'
@@ -23,6 +24,7 @@ export class Shortcuts {
   private areaTracker: WidgetAreaTracker
   private clipboard: HostClipboard
   private shiftHold: ShiftHold
+  private craftClick: CraftClick
 
   static async create (
     logger: Logger,
@@ -47,6 +49,9 @@ export class Shortcuts {
     this.areaTracker = new WidgetAreaTracker(server, overlay)
     this.clipboard = new HostClipboard(logger)
     this.shiftHold = new ShiftHold(poeWindow, server)
+    this.craftClick = new CraftClick(poeWindow, server, logger, this.clipboard, (shortcut) => {
+      pressKeysToCopyItemText(shortcut.split(' + ').filter(key => isModKey(key)), this.gameConfig.showModsKey)
+    })
     this.shiftHold.onChange(() => {
       // hotkeys are registered differently while Shift is held
       setImmediate(() => {
@@ -139,6 +144,10 @@ export class Shortcuts {
 
     this.shiftHold.setHotkey(
       this.actions.find(action => action.action.type === 'toggle-hold-shift')?.shortcut ?? null)
+    const craftClick = this.actions.find(action => action.action.type === 'craft-click')
+    this.craftClick.update(
+      craftClick?.shortcut ?? null,
+      (craftClick?.action.type === 'craft-click') ? craftClick.action.stopPattern : '')
   }
 
   // While Shift is held, the game sees every hotkey with Shift added:
@@ -146,7 +155,7 @@ export class Shortcuts {
   // (e.g. "Shift + Space" would fire on every Space press).
   private shortcutVariants (entry: ShortcutAction): string[] {
     const withShift = mergeTwoHotkeys(entry.shortcut, 'Shift')
-    if (entry.action.type === 'toggle-hold-shift') {
+    if (entry.action.type === 'toggle-hold-shift' || entry.action.type === 'craft-click') {
       return Array.from(new Set([entry.shortcut, withShift]))
     }
     if (!this.shiftHold.isHeld) return [entry.shortcut]
@@ -161,9 +170,9 @@ export class Shortcuts {
             this.logger.write(`debug [Shortcuts] Action type: ${entry.action.type}`)
           }
 
-          if (entry.action.type === 'toggle-hold-shift') {
-            // registered only to keep the key from the game,
-            // ShiftHold reacts to it from the keyboard hook (see there why)
+          if (entry.action.type === 'toggle-hold-shift' || entry.action.type === 'craft-click') {
+            // registered only to keep the key from the game, ShiftHold and
+            // CraftClick react to it from the keyboard hook (see hook-hotkey.ts)
             return
           }
           // the action may send its own keys, don't mix Shift into them

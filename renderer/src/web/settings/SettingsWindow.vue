@@ -58,6 +58,7 @@ import type { Widget, WidgetManager, WidgetSpec } from '@/web/overlay/interfaces
 import AppTitleBar from '@/web/ui/AppTitlebar.vue'
 import SettingsHotkeys from './hotkeys.vue'
 import SettingsChat from './chat.vue'
+import SettingsCrafting from './crafting.vue'
 import SettingsGeneral from './general.vue'
 import SettingsAbout from './about.vue'
 import SettingsPricecheck from '../price-check/settings-price-check.vue'
@@ -211,7 +212,7 @@ function menuByType (type?: string) {
       return [[SettingsItemSearch]]
     default:
       return [
-        [SettingsHotkeys, SettingsChat],
+        [SettingsHotkeys, SettingsChat, SettingsCrafting],
         [SettingsGeneral],
         [SettingsPricecheck, SettingsMaps, SettingsItemcheck],
         [SettingsDebug, SettingsAbout]

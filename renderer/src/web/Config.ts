@@ -120,6 +120,11 @@ export interface Config {
   widgets: widget.Widget[]
   fontSize: number
   showAttachNotification: boolean
+  craftClick: {
+    hotkey: string | null
+    stopPattern: string
+    sound: boolean
+  }
 }
 
 export const defaultConfig = (): Config => ({
@@ -164,6 +169,11 @@ export const defaultConfig = (): Config => ({
   realm: 'pc-ggg',
   useIntlSite: false,
   fontSize: 16,
+  craftClick: {
+    hotkey: null,
+    stopPattern: '',
+    sound: true
+  },
   widgets: widgetRegistry.widgets.reduce<widget.Widget[]>((widgets, { widget }) => {
     const res: widget.Widget[] = []
     if (widget.instances === 'single') {
@@ -436,8 +446,9 @@ function upgradeConfig (_config: Config): Config {
     config.configVersion = 18
   }
 
-  // fork addition, checked by type instead of configVersion
-  // so it doesn't clash with upstream's future config versions
+  // fork additions, checked by presence instead of configVersion
+  // so they don't clash with upstream's future config versions
+  config.craftClick ??= defaultConfig().craftClick
   if (!config.widgets.some(w => w.wmType === 'hold-shift')) {
     config.widgets.push({
       ...defaultConfig().widgets.find(w => w.wmType === 'hold-shift')!,
@@ -508,6 +519,13 @@ function getConfigForHost (): HostConfig {
     actions.push({
       shortcut: delveGrid.toggleKey,
       action: { type: 'trigger-event', target: 'delve-grid' },
+      keepModKeys: true
+    })
+  }
+  if (config.craftClick.hotkey) {
+    actions.push({
+      shortcut: config.craftClick.hotkey,
+      action: { type: 'craft-click', stopPattern: config.craftClick.stopPattern },
       keepModKeys: true
     })
   }

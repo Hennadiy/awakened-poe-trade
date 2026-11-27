@@ -42,6 +42,7 @@ import LoadingAnimation from './LoadingAnimation.vue'
 import { usePoeninja } from '@/web/background/Prices'
 import { useLeagues } from '@/web/background/Leagues'
 import { handleLine } from '@/web/client-log/client-log'
+import { playCraftStopSound } from '@/web/background/craft-sound'
 
 type WMID = Widget['wmId']
 
@@ -110,6 +111,12 @@ export default defineComponent({
     })
     Host.onEvent('MAIN->OVERLAY::visibility', (e) => {
       hideUI.value = !e.isVisible
+    })
+
+    Host.onEvent('MAIN->CLIENT::widget-action', (e) => {
+      if (e.target === 'craft-click:stop' && AppConfig().craftClick.sound) {
+        playCraftStopSound()
+      }
     })
 
     Host.onEvent('MAIN->CLIENT::game-log', (e) => {

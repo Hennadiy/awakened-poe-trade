@@ -1,14 +1,8 @@
 import { app } from 'electron'
-import { uIOhook, UiohookKey, UiohookKeyboardEvent } from 'uiohook-napi'
+import { uIOhook, UiohookKey } from 'uiohook-napi'
+import { HookHotkey, parseHookHotkey, isHookHotkey, isNumpadNavForm } from './hook-hotkey'
 import type { GameWindow } from '../windowing/GameWindow'
 import type { ServerEvents } from '../server'
-
-type UiohookKeyT = keyof typeof UiohookKey
-
-// With Num Lock on and Shift down, Windows turns numpad keys into
-// Insert/End/... and sends a fake Shift release around them.
-// The hook then reports e.g. NumpadInsert (0xEE52) instead of Numpad0 (0x52).
-const NUMPAD_NAV = 0xEE00
 
 // Keeps Shift pressed in the game window, e.g. to keep using a currency item.
 // Shift is let go while the game is not focused (so other apps don't get it)
@@ -23,7 +17,7 @@ export class ShiftHold {
   private ownKeyupUntil = 0
   private changeListener: (() => void) | undefined
 
-  private hotkey: { keycode: number, ctrl: boolean, alt: boolean } | null = null
+  private hotkey: HookHotkey | null = null
   private hotkeyDown = false
   private releaseOnHotkeyUp = false
 
@@ -44,12 +38,12 @@ export class ShiftHold {
         }
         return
       }
-      if (this.isHotkey(e)) {
+      if (isHookHotkey(e, this.hotkey)) {
         if (this.hotkeyDown) return // auto-repeat
         this.hotkeyDown = true
         if (!this.poeWindow.isActive) return
         this.toggle()
-        this.releaseOnHotkeyUp = !this.enabled && e.keycode !== this.hotkey!.keycode
+        this.releaseOnHotkeyUp = !this.enabled && isNumpadNavForm(e, this.hotkey!)
       }
     })
 
@@ -62,7 +56,7 @@ export class ShiftHold {
         this.repressTimer = setTimeout(() => { this.sync() }, 50)
         return
       }
-      if (this.isHotkey(e)) {
+      if (isHookHotkey(e, this.hotkey)) {
         this.hotkeyDown = false
         if (this.releaseOnHotkeyUp) {
           this.releaseOnHotkeyUp = false
@@ -92,12 +86,7 @@ export class ShiftHold {
   }
 
   setHotkey (shortcut: string | null) {
-    const keys = shortcut?.split(' + ') ?? []
-    const key = keys.find(k => k !== 'Ctrl' && k !== 'Alt' && k !== 'Shift')
-    const keycode = key ? UiohookKey[key as UiohookKeyT] : undefined
-    this.hotkey = (keycode != null)
-      ? { keycode, ctrl: keys.includes('Ctrl'), alt: keys.includes('Alt') }
-      : null
+    this.hotkey = parseHookHotkey(shortcut)
   }
 
   toggle () {
@@ -113,15 +102,6 @@ export class ShiftHold {
       this.pauseTimer = undefined
       this.sync()
     }, ms)
-  }
-
-  private isHotkey (e: UiohookKeyboardEvent) {
-    const { hotkey } = this
-    if (!hotkey) return false
-    // Shift is ignored, it is held by us while the hold is on
-    return (e.keycode === hotkey.keycode || e.keycode === (NUMPAD_NAV | hotkey.keycode)) &&
-      e.ctrlKey === hotkey.ctrl &&
-      e.altKey === hotkey.alt
   }
 
   private set (enabled: boolean) {

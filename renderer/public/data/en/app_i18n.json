@@ -269,6 +269,18 @@
     "always_show": "Show button for active widgets",
     "price_check": "Price check (Ctrl + V)"
   },
+  "craft_click": {
+    "name": "Craft click",
+    "about": "A key that left clicks once per press, but first copies the item under the cursor: if it matches the stop pattern, it doesn't click and plays a sound. Works together with Hold Shift.",
+    "hotkey": "Left click key",
+    "stop_pattern": "Stop when the item matches",
+    "pattern_help": "Same syntax as the stash search (poe.re works): all terms must match, \"quoted terms\" may contain spaces, !term must not match, {'|'} means or. Leave empty to always click.",
+    "sound": "Play a sound when it stops",
+    "test_sound": "Test sound",
+    "test_item": "Test: paste an item (Ctrl+C in game)",
+    "test_match": "Matches: the key would not click",
+    "test_no_match": "Doesn't match: the key would click"
+  },
   "hold_shift": {
     "name": "Hold Shift",
     "hotkey": "Hold Shift in the game (on / off)",

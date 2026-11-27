@@ -35,6 +35,9 @@ export interface ShortcutAction {
   } | {
     type: 'toggle-hold-shift'
   } | {
+    type: 'craft-click'
+    stopPattern: string
+  } | {
     type: 'test-only'
   }
 }
