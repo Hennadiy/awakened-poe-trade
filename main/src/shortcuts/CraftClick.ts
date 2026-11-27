@@ -10,11 +10,16 @@ import type { Logger } from '../RemoteLogger'
 // A key that left clicks, unless the item under the cursor already matches
 // the stop pattern: then it doesn't click and the overlay plays a sound.
 // One click per key press, holding the key does not repeat.
+
+// how long an unchanged item counts as "not updated yet" after a click;
+// after that the click is assumed to have done nothing (e.g. no currency on cursor)
+const STALE_ITEM_MS = 1500
 export class CraftClick {
   private hotkey: HookHotkey | null = null
   private matcher: CraftMatcher | null = null
   private keyDown = false
   private busy = false
+  private lastClick: { text: string, at: number } | undefined
   private clicker: MouseClicker
   private shortcut = ''
 
@@ -71,8 +76,17 @@ export class CraftClick {
             name: 'MAIN->CLIENT::widget-action',
             payload: { target: 'craft-click:stop' }
           })
+        } else if (
+          this.lastClick?.text === text &&
+          Date.now() - this.lastClick.at < STALE_ITEM_MS
+        ) {
+          // The game updates the item a moment after the click (server round trip).
+          // Clicking on the old text could reroll an item that already matches.
+          this.logger.write('info [CraftClick] Item has not changed since the last click yet, not clicking.')
         } else if (this.poeWindow.isActive) {
-          this.clicker.click()
+          if (this.clicker.click()) {
+            this.lastClick = { text, at: Date.now() }
+          }
         }
       })
       .catch(() => {

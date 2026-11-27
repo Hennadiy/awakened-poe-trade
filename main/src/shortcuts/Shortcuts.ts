@@ -156,7 +156,8 @@ export class Shortcuts {
   private shortcutVariants (entry: ShortcutAction): string[] {
     const withShift = mergeTwoHotkeys(entry.shortcut, 'Shift')
     if (entry.action.type === 'toggle-hold-shift' || entry.action.type === 'craft-click') {
-      return Array.from(new Set([entry.shortcut, withShift]))
+      // never skipped, the key must be kept from the game in both states
+      return [this.shiftHold.isHeld ? withShift : entry.shortcut]
     }
     if (!this.shiftHold.isHeld) return [entry.shortcut]
     return (withShift === entry.shortcut) ? [] : [withShift]
