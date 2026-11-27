@@ -136,6 +136,8 @@ export default {
   FOULBORN_MODIFIER: 'Нечестивое уникальное свойство',
   VESTIGIAL_NAME: /^Вырожденный: (.*)$/,
   VESTIGIAL_IMPLICIT: 'Собственное свойство вояжа',
+  // TODO: the game's word for "Fated" in this language, never matches for now
+  FATED_NAME: /^(?!)(.*)$/,
   MAP_AREA: 'Область карты: ',
   CHART_SULPHUR: 'Мертвецкая сера: ',
   MERCENARY_LEVEL: 'Уровень наёмника: ',

@@ -459,6 +459,10 @@ export function createFilters (
     }
   }
 
+  if (item.isFated) {
+    filters.fated = { disabled: false }
+  }
+
   if (item.rarity === ItemRarity.Unique) {
     filters.foulborn = {
       value: Boolean(item.isFoulborn)

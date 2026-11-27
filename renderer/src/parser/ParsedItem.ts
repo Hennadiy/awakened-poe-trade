@@ -92,6 +92,7 @@ export interface ParsedItem {
   isFoil?: boolean
   isFoulborn?: boolean
   isVestigial?: boolean
+  isFated?: boolean
   dustEquivalent?: number
   statsByType: StatCalculated[]
   newMods: ParsedModifier[]

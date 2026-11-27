@@ -259,6 +259,7 @@ export interface TranslationDict {
   FOULBORN_MODIFIER: string
   VESTIGIAL_NAME: RegExp
   VESTIGIAL_IMPLICIT: string
+  FATED_NAME: RegExp
   MAP_AREA: string
   CHART_SULPHUR: string
   MERCENARY_LEVEL: string

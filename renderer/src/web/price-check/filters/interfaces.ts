@@ -60,6 +60,9 @@ export interface ItemFilters {
   vestigial?: {
     value: boolean
   }
+  fated?: {
+    disabled: boolean
+  }
   influences?: Array<{
     value: ItemInfluence
     disabled: boolean

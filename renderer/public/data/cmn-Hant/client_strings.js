@@ -136,6 +136,8 @@ export default {
   FOULBORN_MODIFIER: 'Foulborn Unique Modifier',
   VESTIGIAL_NAME: /^殘存 (.*)$/,
   VESTIGIAL_IMPLICIT: '殘存固定詞綴',
+  // TODO: the game's word for "Fated" in this language, never matches for now
+  FATED_NAME: /^(?!)(.*)$/,
   MAP_AREA: '地圖區域: ',
   CHART_SULPHUR: '亡者硫酸: ',
   MERCENARY_LEVEL: '傭兵等級: ',

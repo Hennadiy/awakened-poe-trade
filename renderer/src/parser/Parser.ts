@@ -34,6 +34,7 @@ const parsers: Array<ParserFn | { virtual: VirtualParserFn }> = [
   { virtual: parseSuperior },
   { virtual: parseFoulborn },
   { virtual: parseVestigial },
+  { virtual: parseFated },
   parseSynthesised,
   parseCategoryByHelpText,
   { virtual: parseMapTier },
@@ -162,6 +163,11 @@ function normalizeName (item: ParserState) {
   if (item.rarity === ItemRarity.Magic) {
     const baseType = magicBasetype(item.name)
     if (baseType) {
+      // "Sturdy Fated Conquest Lamellar of the Fox"
+      const before = item.name.slice(0, item.name.indexOf(baseType)).trim().split(' ')
+      if (before.length && _$.FATED_NAME.test(`${before[before.length - 1]} ${baseType}`)) {
+        item.isFated = true
+      }
       item.name = baseType
     }
   }
@@ -1014,6 +1020,23 @@ function parseFoulborn (item: ParserState) {
   if (_$.FOULBORN_NAME.test(item.name)) {
     item.name = _$.FOULBORN_NAME.exec(item.name)![1]
     item.isFoulborn = true
+  }
+}
+
+// "Fated Conquest Lamellar" (3.30): the base type with a "Fated" prefix
+function parseFated (item: ParserState) {
+  if (item.baseType) {
+    if (_$.FATED_NAME.test(item.baseType)) {
+      item.baseType = _$.FATED_NAME.exec(item.baseType)![1]
+      item.isFated = true
+    }
+  } else if (
+    (item.rarity !== ItemRarity.Unique || item.isUnidentified) &&
+    _$.FATED_NAME.test(item.name)
+  ) {
+    // name line is the base type (normal, unidentified), not e.g. the unique "Fated End"
+    item.name = _$.FATED_NAME.exec(item.name)![1]
+    item.isFated = true
   }
 }
 
